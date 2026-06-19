@@ -15,4 +15,6 @@ public class AuthResponse {
     private boolean isPrimeiroAcesso;
     private String nome;
     private String cargo;
+    private String localEquipe;
+    private String role;
 }

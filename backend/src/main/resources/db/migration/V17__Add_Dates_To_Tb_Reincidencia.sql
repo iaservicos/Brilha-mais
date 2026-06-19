@@ -1,0 +1,4 @@
+ALTER TABLE tb_reincidencia ADD COLUMN IF NOT EXISTS abertura_anterior TIMESTAMP;
+ALTER TABLE tb_reincidencia ADD COLUMN IF NOT EXISTS ft_anterior TIMESTAMP;
+ALTER TABLE tb_reincidencia ADD COLUMN IF NOT EXISTS abertura_rrc TIMESTAMP;
+ALTER TABLE tb_reincidencia ADD COLUMN IF NOT EXISTS ft_rrc TIMESTAMP;

@@ -7,64 +7,58 @@ O sistema processa chamados e métricas diretamente na base de dados, permitindo
 ## 🛠️ Tecnologias Utilizadas
 
 - **Frontend:** React + TypeScript, Vite, TailwindCSS, Zustand (State Management), Recharts (Gráficos)
-- **Backend:** Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA
+- **Backend:** Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA, Flyway (Migrations)
+- **Ingestão de Dados:** Python, FastAPI, Pandas (Upload e processamento incremental de dados)
 - **Banco de Dados:** PostgreSQL (Hospedado via Supabase)
 - **Infraestrutura:** Docker & Docker Compose
-- **Data Ingestion (Scripts):** Python & Pandas (Leitura e processamento de planilhas operacionais)
+
+---
+
+## 🔒 Variáveis de Ambiente e Segurança
+
+Por questões de segurança, **as credenciais do sistema não são versionadas**.
+Antes de iniciar o projeto pela primeira vez, você precisa configurar seu arquivo de ambiente local.
+
+1. Na raiz do projeto, copie o arquivo de exemplo:
+   ```bash
+   cp .env.example .env
+   ```
+2. Abra o arquivo `.env` gerado e preencha com as senhas e credenciais corretas do Supabase fornecidas pela equipe, e defina uma chave hexadecimal secreta em `JWT_SECRET`.
 
 ---
 
 ## 🚀 Como iniciar o projeto localmente
 
-Você tem duas formas principais de iniciar o projeto: via **Docker** (para rodar tudo de uma vez) ou **Manualmente** (ideal para desenvolvimento).
+A maneira mais fácil e recomendada de iniciar a aplicação com toda sua arquitetura (Backend, Frontend e Ingestão) é através do **Docker Compose**.
 
-### Opção 1: Via Docker Compose (Mais fácil)
+### Pré-requisitos:
+- Docker e Docker Compose instalados.
+- Arquivo `.env` preenchido na raiz do projeto.
 
-Se você possuir o Docker instalado na sua máquina, basta rodar o comando abaixo na raiz do projeto:
+### Subindo os contêineres:
 
+Na raiz do projeto, rode o comando:
 ```bash
 docker-compose up --build -d
 ```
-*Isso vai iniciar o Banco de Dados, o Backend e o Frontend.*
-Acesse o Frontend em: `http://localhost:3000`
-Acesse a API do Backend em: `http://localhost:8080`
 
-### Opção 2: Iniciando Manualmente (Modo Desenvolvimento)
+O Docker criará 3 instâncias conectadas:
+- 🌐 **Frontend (React):** Acessível em `http://localhost:3000`
+- ⚙️ **Backend API (Spring Boot):** Acessível em `http://localhost:8080`
+- 📊 **Ingestão API (Python FastAPI):** Acessível em `http://localhost:8001`
 
-#### Pré-requisitos:
-- Java 21
-- Node.js (v18+)
-- Banco de Dados PostgreSQL configurado
-
-#### 1. Iniciando o Backend (Spring Boot)
-Navegue até a pasta do backend:
-```bash
-cd backend
-```
-Caso use o Maven Wrapper:
-```bash
-# No Windows
-mvnw.cmd spring-boot:run
-
-# No Linux/Mac
-./mvnw spring-boot:run
-```
-
-#### 2. Iniciando o Frontend (React + Vite)
-Abra uma **nova aba** no seu terminal e navegue para a pasta do frontend:
-```bash
-cd frontend
-```
-
-Instale as dependências na primeira vez:
-```bash
-npm install
-```
-
-Inicie o servidor de desenvolvimento:
-```bash
-npm run dev
-```
-O frontend estará acessível em `http://localhost:5173` (porta padrão do Vite) ou `http://localhost:3000`.
+*(Se precisar desligar a aplicação, use `docker-compose down`)*
 
 ---
+
+## 👑 Controle de Acesso (RBAC)
+
+O sistema Brilha+ conta com níveis de acesso estruturados via banco de dados (`tb_tecnico.role`):
+
+1. **Padrão:** Visão exclusiva do técnico para suas métricas e comparativos.
+2. **Administrador:** Visão gerencial sobre equipes e dashboards táticos *(em desenvolvimento)*.
+3. **Moderador:** Acesso total. Apenas Moderadores possuem acesso à engrenagem de configurações na interface para visualizar o **Painel de Ingestão**.
+
+### 📥 Ingestão Incremental
+
+No painel de configurações (disponível apenas para Moderadores), os dados operacionais (SLA, Peças, Reincidências e Encerrados) podem ser submetidos mês a mês no formato `.xlsx`. O Python FastAPI recebe as planilhas e aplica inserções baseadas em `ON CONFLICT DO NOTHING`, garantindo que os dados não sejam duplicados e preservando o histórico da aplicação de forma contínua.

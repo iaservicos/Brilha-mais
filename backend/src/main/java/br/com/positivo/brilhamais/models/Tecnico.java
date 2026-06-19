@@ -46,10 +46,13 @@ public class Tecnico implements UserDetails {
     @Column(name = "is_primeiro_acesso")
     private Boolean isPrimeiroAcesso = true;
 
+    @Column(name = "role", length = 20)
+    private String role = "PADRAO";
+
     // Métodos do UserDetails (Spring Security)
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_TECNICO"));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + (this.role != null ? this.role.toUpperCase() : "PADRAO")));
     }
 
     @Override

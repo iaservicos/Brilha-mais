@@ -5,9 +5,9 @@ spring:
   application:
     name: brilha-mais-backend
   datasource:
-    url: jdbc:postgresql://aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
-    username: postgres.scdkwhbvaiekcusayetn
-    password: Brilha_mais
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -27,8 +27,7 @@ jwt:
   expiration: 900000
   # Tempo de expiração do Refresh Token (7 dias)
   refresh-expiration: 604800000
-  # Chave secreta HMAC para assinatura (em produção, usar RS256 com private/public keys injetadas via cofre)
-  # Usando HMAC-SHA256 longo apenas para desenvolvimento rápido local
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  # Chave secreta HMAC para assinatura (injeta a partir do environment)
+  secret: ${JWT_SECRET}
 
 # Rate Limiting via Bucket4j Configurations will be handled via code for /api/v1/auth/**

@@ -36,14 +36,16 @@ export default function LoginScreen() {
         senha: passwordInput
       });
 
-      const { accessToken, primeiroAcesso, nome, cargo } = response.data;
+      const { accessToken, primeiroAcesso, nome, cargo, localEquipe, role } = response.data;
       const decoded: any = jwtDecode(accessToken);
 
       await setAuth(accessToken, {
         matricula: userIdInput,
         primeiroAcesso: primeiroAcesso,
         nomeCompleto: nome || decoded.nome || decoded.sub || userIdInput,
-        cargo: cargo
+        cargo: cargo,
+        localEquipe: localEquipe,
+        role: role
       });
 
       setLoading(false);
@@ -93,14 +95,16 @@ export default function LoginScreen() {
         matricula: paMatricula
       });
 
-      const { accessToken, primeiroAcesso, nome, cargo } = response.data;
+      const { accessToken, primeiroAcesso, nome, cargo, localEquipe, role } = response.data;
       const decoded: any = jwtDecode(accessToken);
 
       await setAuth(accessToken, {
         matricula: paMatricula,
         primeiroAcesso: primeiroAcesso,
         nomeCompleto: nome || decoded.nome || decoded.sub || paNome,
-        cargo: cargo
+        cargo: cargo,
+        localEquipe: localEquipe,
+        role: role
       });
 
       setIsModalOpen(false);

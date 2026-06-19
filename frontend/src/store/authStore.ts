@@ -6,6 +6,8 @@ export interface UserProfile {
   primeiroAcesso: boolean;
   nomeCompleto?: string;
   cargo?: string;
+  localEquipe?: string;
+  role?: string;
 }
 
 interface AuthState {

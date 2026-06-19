@@ -36,6 +36,7 @@ export default function TopBar() {
   }, []);
 
   const isAdmin = user?.cargo === 'Administrador' || user?.cargo === 'Admin' || user?.cargo === 'Super Administrador';
+  const isModerador = user?.role === 'MODERADOR';
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-light-surface dark:bg-background shadow-sm border-b border-light-borderStrong dark:border-border z-40 h-20 flex items-center justify-between px-6 pt-safe">
@@ -94,6 +95,10 @@ export default function TopBar() {
           {/* Menu Dropdown */}
           {isMenuOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-light-surface dark:bg-surface rounded-md shadow-lg py-1 border border-light-borderStrong dark:border-border z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="px-4 py-2 border-b border-light-borderStrong dark:border-border mb-1">
+                <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{user?.nomeCompleto}</p>
+                <p className="text-xs text-light-text-muted dark:text-text-muted truncate" title={user?.localEquipe}>{user?.localEquipe || 'Localidade não informada'}</p>
+              </div>
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -103,7 +108,19 @@ export default function TopBar() {
                   className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Settings size={16} className="mr-2" />
-                  Configurações
+                  Preferências Visuais
+                </button>
+              )}
+              {isModerador && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    navigate('/configuracoes');
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-accent-teal hover:bg-accent-teal/10 transition-colors"
+                >
+                  <Settings size={16} className="mr-2" />
+                  Painel de Ingestão
                 </button>
               )}
               <button

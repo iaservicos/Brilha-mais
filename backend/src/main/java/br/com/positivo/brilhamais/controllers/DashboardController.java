@@ -24,9 +24,7 @@ public class DashboardController {
 
     @GetMapping("/ranking")
     public ResponseEntity<List<RankingDTO>> getRanking(
-            @RequestParam(name = "mesAno", required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno
-    ) {
+            @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno) {
         if (mesAno == null) {
             Campanha campanha = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
             if (campanha != null) {
@@ -40,17 +38,14 @@ public class DashboardController {
 
     @PostMapping("/calcular")
     public ResponseEntity<String> forceCalculate(
-            @RequestParam(name = "mesAno", required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno
-    ) {
+            @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno) {
         motorCalculoService.calcularEProcessarMes(mesAno);
         return ResponseEntity.ok("Cálculo e consolidação em lote concluídos com sucesso.");
     }
-    
+
     @PostMapping("/calcular-tecnico")
     public ResponseEntity<String> forceCalculateTecnico(
-            @RequestParam(name = "matricula") String matricula
-    ) {
+            @RequestParam(name = "matricula") String matricula) {
         motorCalculoService.calcularEProcessarTecnico(matricula);
         return ResponseEntity.ok("Cálculo individual concluído para o técnico com matrícula " + matricula);
     }

@@ -34,12 +34,19 @@ public class AuthService {
         var accessToken = jwtService.generateToken(tecnico);
         var refreshToken = jwtService.generateRefreshToken(tecnico);
 
+        String estado = null;
+        if (tecnico.getCtBase() != null && !tecnico.getCtBase().isEmpty()) {
+            estado = repository.findEstadoByCtBase(tecnico.getCtBase());
+        }
+
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .isPrimeiroAcesso(tecnico.getIsPrimeiroAcesso())
                 .nome(tecnico.getNomeCompleto())
                 .cargo(tecnico.getCargo())
+                .localEquipe(estado != null ? estado : tecnico.getCtBase())
+                .role(tecnico.getRole() != null ? tecnico.getRole() : "PADRAO")
                 .build();
     }
 
@@ -88,12 +95,19 @@ public class AuthService {
         var accessToken = jwtService.generateToken(tecnico);
         var refreshToken = jwtService.generateRefreshToken(tecnico);
 
+        String estado = null;
+        if (tecnico.getCtBase() != null && !tecnico.getCtBase().isEmpty()) {
+            estado = repository.findEstadoByCtBase(tecnico.getCtBase());
+        }
+
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .isPrimeiroAcesso(tecnico.getIsPrimeiroAcesso())
                 .nome(tecnico.getNomeCompleto())
                 .cargo(tecnico.getCargo())
+                .localEquipe(estado != null ? estado : tecnico.getCtBase())
+                .role(tecnico.getRole() != null ? tecnico.getRole() : "PADRAO")
                 .build();
     }
 }

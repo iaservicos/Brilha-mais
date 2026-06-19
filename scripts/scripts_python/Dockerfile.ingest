@@ -1,0 +1,9 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN pip install fastapi uvicorn pandas openpyxl psycopg2-binary SQLAlchemy python-multipart
+
+COPY ./data_ingestion/api_ingestao.py .
+
+CMD ["uvicorn", "api_ingestao:app", "--host", "0.0.0.0", "--port", "8001"]

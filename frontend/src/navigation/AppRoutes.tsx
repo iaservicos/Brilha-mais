@@ -9,9 +9,15 @@ import DashboardScreen from '../screens/DashboardScreen';
 import RankingScreen from '../screens/RankingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import { useAuthStore } from '../store/authStore';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { token, isLoading } = useAuthStore();
 
   if (isLoading) {
@@ -24,6 +30,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Verifica as roles se `allowedRoles` for fornecido
+  if (allowedRoles && allowedRoles.length > 0) {
+    const userRole = useAuthStore.getState().user?.role || 'PADRAO';
+    if (!allowedRoles.includes(userRole)) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -43,6 +57,7 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardScreen />} />
         <Route path="/ranking" element={<RankingScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={['MODERADOR']}><SettingsScreen /></ProtectedRoute>} />
       </Route>
 
       {/* Redirecionamento padrão para rotas não encontradas */}

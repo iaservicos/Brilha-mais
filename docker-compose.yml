@@ -1,27 +1,6 @@
 version: '3.8'
 
 services:
-  # --- SERVIÇO DO BANCO DE DADOS (POSTGRES) ---
-  db:
-    image: postgres:15-alpine
-    container_name: brilhamais_db
-    restart: always
-    environment:
-      POSTGRES_USER: positivo_user
-      POSTGRES_PASSWORD: positivo_secure_password
-      POSTGRES_DB: brilhamais_db
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U positivo_user -d brilhamais_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - brilhamais_network
-
   # --- SERVIÇO DO BACKEND (SPRING BOOT) ---
   backend:
     build:
@@ -31,13 +10,26 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
-      - SPRING_DATASOURCE_USERNAME=postgres.scdkwhbvaiekcusayetn
-      - SPRING_DATASOURCE_PASSWORD=Brilha_mais
       - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
       - SPRING_FLYWAY_SCHEMAS=public
       - SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=public
+    networks:
+      - brilhamais_network
+
+  # --- SERVIÇO DE INGESTÃO (PYTHON FASTAPI) ---
+  python_ingestion:
+    build:
+      context: ./scripts/scripts_python
+      dockerfile: Dockerfile.ingest
+    container_name: brilhamais_ingestion
+    restart: always
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
     networks:
       - brilhamais_network
 
@@ -56,9 +48,6 @@ services:
       - backend
     networks:
       - brilhamais_network
-
-volumes:
-  postgres_data:
 
 networks:
   brilhamais_network:
