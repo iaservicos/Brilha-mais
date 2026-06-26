@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Medal, Trophy, Star } from 'lucide-react';
+import { Medal, Trophy, Star, XCircle, Award, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -8,6 +8,7 @@ export default function RankingScreen() {
   const [rankingData, setRankingData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [myPos, setMyPos] = useState<number | string>('--');
+  const [selectedTecnico, setSelectedTecnico] = useState<any | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -31,7 +32,8 @@ export default function RankingScreen() {
               score: r.pontosTotal,
               base: '', // Base ATP não está disponível no provisório
               isMe: isMe,
-              posicaoRanking: r.posicaoRanking
+              posicaoRanking: r.posicaoRanking,
+              rawDto: r
             };
           });
           
@@ -78,7 +80,8 @@ export default function RankingScreen() {
           {rankingData.map((usr, index) => (
             <li 
               key={usr.id + '-' + index} 
-              className={`p-4 flex items-center justify-between ${
+              onClick={() => setSelectedTecnico(usr)}
+              className={`p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors ${
                 usr.isMe ? 'bg-amber-50/50 relative' : ''
               }`}
             >
@@ -115,6 +118,88 @@ export default function RankingScreen() {
           ))}
         </ul>
       </div>
+
+      {selectedTecnico && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-light-surface dark:bg-surface rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden border border-light-borderStrong dark:border-border animate-in zoom-in-95">
+            <div className="p-6 border-b border-light-borderStrong dark:border-border flex justify-between items-center bg-light-background dark:bg-background/50">
+              <h2 className="text-xl font-bold text-light-text-main dark:text-text-main flex items-center gap-2">
+                <Award className="text-accent-teal" /> Desempenho de {selectedTecnico.name}
+              </h2>
+              <button onClick={() => setSelectedTecnico(null)} className="text-light-text-muted hover:text-slate-600 transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="p-6 overflow-x-auto overflow-y-auto max-h-[70vh] scrollbar-hide">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-background text-slate-600 dark:text-text-muted text-sm font-bold uppercase tracking-wider">
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border rounded-tl-lg">Mês</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">SLA</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">Reinc. (Eqp)</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">Reinc. (Ind)</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">Perdas</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">NPS</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">Peças</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center">Total</th>
+                    <th className="p-4 border-b border-light-borderStrong dark:border-border text-center rounded-tr-lg">Elegibilidade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-border/50 bg-light-surface dark:bg-surface">
+                  {selectedTecnico.rawDto?.historico?.map((h: any, i: number) => {
+                    const isMedia = h.mes === 'Média Final';
+                    return (
+                      <tr key={i} className={`hover:bg-light-background dark:hover:bg-background/50 transition-colors ${isMedia ? 'bg-light-background dark:bg-background/30' : ''}`}>
+                        <td className="p-4 font-bold text-light-text-main dark:text-text-main flex items-center gap-2">
+                          {isMedia && <TrendingUp size={16} className="text-accent-teal"/>}
+                          {h.mes}
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.percentualSla?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosSla} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.percentualReincidenciaEquipe?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosReincidenciaEquipe} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.percentualReincidencia?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosReincidencia} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.percentualPerdidos?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosPerdidos} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.npsScore?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosNps} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="font-bold text-light-text-secondary">{h.percentualEficienciaPecas?.toFixed(2)}%</div>
+                          <div className="text-xs font-medium text-accent-teal bg-accent-teal/10 px-2 py-0.5 rounded-full inline-block mt-1">{h.pontosPecas} pts</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="text-2xl font-black text-light-text-main">{h.pontosTotal}</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          {h.elegivel ? (
+                            <span className="bg-accent-emerald text-white text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm"><CheckCircle2 size={14}/> Elegível</span>
+                          ) : (
+                            <span className="bg-status-danger text-white text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm" title={h.motivoInelegibilidade}><XCircle size={14}/> Inelegível</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {(!selectedTecnico.rawDto?.historico || selectedTecnico.rawDto.historico.length === 0) && (
+                <div className="p-8 text-center text-light-text-muted">Nenhum detalhamento disponível.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

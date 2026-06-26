@@ -23,6 +23,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final MotorCalculoService motorCalculoService;
 
     public AuthResponse login(AuthRequest request) {
         // Authenticate the user credentials
@@ -39,6 +40,13 @@ public class AuthService {
             var tecnico = tecnicoOpt.get();
             var accessToken = jwtService.generateToken(tecnico);
             var refreshToken = jwtService.generateRefreshToken(tecnico);
+
+            // Gatilho de Tempo Real: recalcular dados do técnico no momento do login
+            try {
+                motorCalculoService.calcularEProcessarTecnico(request.getMatricula());
+            } catch (Exception e) {
+                // Ignora erros para não barrar o login
+            }
 
             String estado = null;
             if (tecnico.getCtBase() != null && !tecnico.getCtBase().isEmpty()) {

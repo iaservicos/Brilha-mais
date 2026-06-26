@@ -24,7 +24,6 @@ public class MotorCalculoService {
     private final ApuracaoMensalRepository apuracaoRepository;
     private final CampanhaRepository campanhaRepository;
     private final RegrasElegibilidadeCiat regrasCiat;
-    private final MapeamentoAtpService mapeamentoAtpService;
     private final CalculoMetricasRepository calculoMetricasRepository;
     private final ConversorPontuacaoService conversorPontuacaoService;
 
@@ -114,15 +113,13 @@ public class MotorCalculoService {
     private ApuracaoMensal calcularParaPeriodo(Tecnico tecnico, LocalDate dataInicio, LocalDate dataFim, LocalDate mesAnoGravacao) {
         int idTecnico = tecnico.getIdTecnico();
         String ctBase = tecnico.getCtBase();
-        
-        MapeamentoAtpService.AtpInfo atpInfo = mapeamentoAtpService.buscarInfoAtp(ctBase);
-        boolean useAtp = atpInfo.isMapeada();
+
 
         // Buscando Métricas Base do BD
-        BigDecimal pSlaEquipe = calculoMetricasRepository.calcularPercentualSlaEquipe(useAtp, atpInfo.uf(), atpInfo.nomeAtp(), idTecnico, ctBase, dataInicio, dataFim);
-        BigDecimal pReincEquipe = calculoMetricasRepository.calcularPercentualReincidenciaEquipe(useAtp, atpInfo.uf(), atpInfo.nomeAtp(), idTecnico, ctBase, dataInicio, dataFim);
-        BigDecimal pPerdidosEquipe = calculoMetricasRepository.calcularPercentualPerdidosEquipe(useAtp, atpInfo.uf(), atpInfo.nomeAtp(), idTecnico, ctBase, dataInicio, dataFim);
-        Map<String, Object> npsResult = calculoMetricasRepository.buscarNps(useAtp, atpInfo.uf(), atpInfo.nomeAtp(), idTecnico, ctBase, dataInicio, dataFim);
+        BigDecimal pSlaEquipe = calculoMetricasRepository.calcularPercentualSlaEquipe(idTecnico, ctBase, dataInicio, dataFim);
+        BigDecimal pReincEquipe = calculoMetricasRepository.calcularPercentualReincidenciaEquipe(idTecnico, ctBase, dataInicio, dataFim);
+        BigDecimal pPerdidosEquipe = calculoMetricasRepository.calcularPercentualPerdidosEquipe(idTecnico, ctBase, dataInicio, dataFim);
+        Map<String, Object> npsResult = calculoMetricasRepository.buscarNps(idTecnico, ctBase, dataInicio, dataFim);
         
         long totalChamadosIndiv = calculoMetricasRepository.buscarTotalChamadosIndividual(idTecnico, dataInicio, dataFim);
         BigDecimal pReincIndiv = calculoMetricasRepository.calcularPercentualReincidenciaIndividual(idTecnico, dataInicio, dataFim);

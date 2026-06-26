@@ -46,6 +46,7 @@ public class Tecnico implements UserDetails {
     @Column(name = "is_primeiro_acesso")
     private Boolean isPrimeiroAcesso = true;
 
+
     @Column(name = "role", length = 20)
     private String role = "PADRAO";
 

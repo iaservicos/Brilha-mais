@@ -25,7 +25,8 @@ public class DashboardController {
 
     @GetMapping("/ranking")
     public ResponseEntity<List<RankingDTO>> getRanking(
-            @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno) {
+            @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno,
+            org.springframework.security.core.Authentication authentication) {
         Campanha campanha = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
         
         if (mesAno == null) {
@@ -37,6 +38,21 @@ public class DashboardController {
         }
         
         List<RankingDTO> ranking = dashboardService.getRankingMensal(mesAno);
+        
+        // Recalculo em tempo real (Gatilho para o usuário atual)
+        if (authentication != null && authentication.isAuthenticated()) {
+            String matricula = authentication.getName();
+            try {
+                // Como motorCalculoService.calcularEProcessarTecnico não deve quebrar a requisição se a matricula for de supervisor
+                motorCalculoService.calcularEProcessarTecnico(matricula);
+                
+                // Busca o ranking atualizado apenas se o cálculo ocorrer sem erro
+                ranking = dashboardService.getRankingMensal(mesAno);
+            } catch (Exception e) {
+                // Ignora exceções (ex: usuário logado é supervisor e não técnico, ou ocorreu erro transacional)
+                // O dashboard vai renderizar normalmente com os dados em cache
+            }
+        }
         
         // Se a data atual não tiver resultados e usamos a campanha ativa que acabou de fechar, tentar a última data disponível
         if ((ranking == null || ranking.isEmpty()) && campanha != null) {

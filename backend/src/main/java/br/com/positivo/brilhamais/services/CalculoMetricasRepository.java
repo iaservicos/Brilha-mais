@@ -15,15 +15,13 @@ public class CalculoMetricasRepository {
 
         private final JdbcTemplate jdbcTemplate;
 
-        public BigDecimal calcularPercentualSlaEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
+        public BigDecimal calcularPercentualSlaEquipe(int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
                 StringBuilder sql = new StringBuilder(
-                                "SELECT count(c.chamado) as total, COALESCE(sum(case when UPPER(TRIM(c.sla_status)) = 'DENTRO' then 1 else 0 end), 0) as dentro FROM tb_chamado c"
-                                                + join
+                                "SELECT count(c.chamado) as total, COALESCE(sum(case when UPPER(TRIM(c.sla_status)) = 'DENTRO' then 1 else 0 end), 0) as dentro FROM tb_chamado c "
                                                 + "WHERE c.ft >= ? AND c.ft < ? AND c.sla_status IS NOT NULL");
 
-                Object[] args = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql, "c");
+                Object[] args = buildArgs(idTecnico, ctBase, inicio, fim, sql, "c");
 
                 Map<String, Object> r = jdbcTemplate.queryForMap(sql.toString(), args);
                 long t = ((Number) r.get("total")).longValue();
@@ -32,24 +30,17 @@ public class CalculoMetricasRepository {
                                 : BigDecimal.ZERO;
         }
 
-        public BigDecimal calcularPercentualReincidenciaEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
+        public BigDecimal calcularPercentualReincidenciaEquipe(int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String joinQtd = useAtp ? " LEFT JOIN tb_base_atp b ON r.ct_anterior = b.ct_codigo " : " ";
                 StringBuilder sql1 = new StringBuilder("SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r "
-                                +
-                                joinQtd +
-                                "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90");
+                                + "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90");
 
-                String joinBase = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_codigo = b.ct_codigo " : " ";
                 StringBuilder sql2 = new StringBuilder(
-                                "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c" + joinBase
+                                "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c "
                                                 + "WHERE c.ft >= ? AND c.ft < ?");
 
-                Object[] args1 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql1, "r",
-                                "ct_anterior",
-                                "tecnico_anterior_id_not_used");
-                Object[] args2 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql2, "c", "ct_base",
-                                "id_tecnico_not_used");
+                Object[] args1 = buildArgs(idTecnico, ctBase, inicio, fim, sql1, "r", "ct_anterior", "tecnico_anterior_id_not_used");
+                Object[] args2 = buildArgs(idTecnico, ctBase, inicio, fim, sql2, "c", "assistencia_codigo", "id_tecnico_not_used");
 
                 long qtd = ((Number) jdbcTemplate.queryForMap(sql1.toString(), args1).getOrDefault("qtd", 0))
                                 .longValue();
@@ -60,21 +51,18 @@ public class CalculoMetricasRepository {
                                 : BigDecimal.ZERO;
         }
 
-        public BigDecimal calcularPercentualPerdidosEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
+        public BigDecimal calcularPercentualPerdidosEquipe(int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
                 String conditionPerdidos = " AND UPPER(TRIM(c.classificacao_chamado)) IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO')";
 
-                StringBuilder sql1 = new StringBuilder("SELECT count(c.chamado) as perdidos FROM tb_chamado c"
-                                + join
+                StringBuilder sql1 = new StringBuilder("SELECT count(c.chamado) as perdidos FROM tb_chamado c "
                                 + "WHERE c.ft >= ? AND c.ft < ?"
                                 + conditionPerdidos);
-                StringBuilder sql2 = new StringBuilder("SELECT count(c.chamado) as total FROM tb_chamado c"
-                                + join
+                StringBuilder sql2 = new StringBuilder("SELECT count(c.chamado) as total FROM tb_chamado c "
                                 + "WHERE c.ft >= ? AND c.ft < ?");
 
-                Object[] args1 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql1, "c");
-                Object[] args2 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql2, "c");
+                Object[] args1 = buildArgs(idTecnico, ctBase, inicio, fim, sql1, "c");
+                Object[] args2 = buildArgs(idTecnico, ctBase, inicio, fim, sql2, "c");
 
                 long qtd = ((Number) jdbcTemplate.queryForMap(sql1.toString(), args1).getOrDefault("perdidos", 0))
                                 .longValue();
@@ -85,23 +73,16 @@ public class CalculoMetricasRepository {
                                 : BigDecimal.ZERO;
         }
 
-        public Map<String, Object> buscarNps(boolean useAtp, String uf, String nomeAtp, int idTecnico, String ctBase,
+        public Map<String, Object> buscarNps(int idTecnico, String ctBase,
                         LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
                 StringBuilder sql = new StringBuilder(
                                 "SELECT count(n.id_nps) as total, COALESCE(sum(case when n.classificacao = 'PROMOTOR' then 1 else 0 end), 0) as promotores, COALESCE(sum(case when n.classificacao = 'DETRATOR' then 1 else 0 end), 0) as detratores FROM tb_nps n JOIN tb_chamado c ON n.numero_chamado = c.chamado "
-                                                + join
                                                 + "WHERE c.ft >= ? AND c.ft < ?");
 
-                Object[] args = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql, "c");
+                Object[] args = buildArgs(idTecnico, ctBase, inicio, fim, sql, "c");
                 return jdbcTemplate.queryForMap(sql.toString(), args);
         }
 
-        /**
-         * Busca o total de chamados atendidos (O Divisor da Base DL).
-         * Regra de Negócio: Conta os chamados na Base DL,
-         * e ignorando chamados do projeto restrito 'H3-03535', para não prejudicar o percentual do técnico.
-         */
         public long buscarTotalChamadosIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
                 String sql = "SELECT count(c.chamado) as total FROM tb_chamado c WHERE c.id_tecnico = ? AND c.ft >= ? AND c.ft < ? AND c.projeto <> 'H3-03535'";
                 return ((Number) jdbcTemplate.queryForMap(sql, idTecnico, inicio, fim.plusDays(1)).getOrDefault("total",
@@ -109,11 +90,6 @@ public class CalculoMetricasRepository {
                                 .longValue();
         }
 
-        /**
-         * Calcula a taxa de reincidência de um técnico (Numerador / Divisor).
-         * Numerador (sql1): Volume de chamados que voltaram a dar defeito em até 3 meses.
-         * Divisor (sql2): Volume total de chamados encerrados da base de reincidência.
-         */
         public BigDecimal calcularPercentualReincidenciaIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
                 String sql1 = "SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r JOIN tb_tecnico t ON UPPER(TRIM(r.tecnico_nome_anterior)) = UPPER(TRIM(t.nome_completo)) "
                                 +
@@ -150,16 +126,13 @@ public class CalculoMetricasRepository {
                 return result;
         }
 
-        private Object[] buildArgs(boolean useAtp, String uf, String nomeAtp, int idTecnico, String ctBase,
+        private Object[] buildArgs(int idTecnico, String ctBase,
                         LocalDate inicio, LocalDate fim, StringBuilder sql, String alias) {
-                return buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql, alias, "ct_base",
+                return buildArgs(idTecnico, ctBase, inicio, fim, sql, alias, "assistencia_centro_trabalho",
                                 "id_tecnico");
         }
 
         private Object[] buildArgs(
-                        boolean useAtp,
-                        String uf,
-                        String nomeAtp,
                         int idTecnico,
                         String ctBase,
                         LocalDate inicio,
@@ -168,9 +141,9 @@ public class CalculoMetricasRepository {
                         String alias,
                         String ctBaseCol,
                         String idTecnicoCol) {
-                if (useAtp) {
-                        sql.append(" AND b.uf = ? AND b.nome_atp = ?");
-                        return new Object[] { inicio, fim.plusDays(1), uf, nomeAtp };
+                if (ctBase != null && (ctBase.equals("8789471") || ctBase.equals("89001630"))) {
+                        sql.append(" AND ").append(alias).append(".").append(ctBaseCol).append(" IN ('8789471', '89001630')");
+                        return new Object[] { inicio, fim.plusDays(1) };
                 } else if (ctBase != null && !ctBase.isEmpty()) {
                         sql.append(" AND ").append(alias).append(".").append(ctBaseCol).append(" = ?");
                         return new Object[] { inicio, fim.plusDays(1), ctBase };
