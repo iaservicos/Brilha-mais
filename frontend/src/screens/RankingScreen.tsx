@@ -70,7 +70,7 @@ export default function RankingScreen() {
           </h2>
           <p className="text-sm text-light-text-muted mt-1">Sua posição atual é a {myPos}ª</p>
         </div>
-        <div className="bg-positivo-primary text-white w-14 h-14 rounded-full flex items-center justify-center font-bold text-2xl shadow-md border-4 border-light-background">
+        <div className="bg-positivo-primary text-text-main w-14 h-14 rounded-full flex items-center justify-center font-bold text-2xl shadow-md border-4 border-light-background">
           {myPos}º
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function RankingScreen() {
                   index === 0 ? 'bg-yellow-100 text-yellow-600' :
                   index === 1 ? 'bg-light-borderStrong text-light-text-muted' :
                   index === 2 && !usr.isMe ? 'bg-orange-100 text-orange-600' :
-                  'bg-positivo-secondary text-white'
+                  'bg-positivo-secondary text-text-main'
                 }`}>
                   {index < 3 ? <Medal size={20} /> : <Star size={16} />}
                 </div>
@@ -183,9 +183,9 @@ export default function RankingScreen() {
                         </td>
                         <td className="p-4 text-center">
                           {h.elegivel ? (
-                            <span className="bg-accent-emerald text-white text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm"><CheckCircle2 size={14}/> Elegível</span>
+                            <span className="bg-accent-emerald text-text-main text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm"><CheckCircle2 size={14}/> Elegível</span>
                           ) : (
-                            <span className="bg-status-danger text-white text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm" title={h.motivoInelegibilidade}><XCircle size={14}/> Inelegível</span>
+                            <span className="bg-status-danger text-text-main text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 shadow-sm" title={h.motivoInelegibilidade}><XCircle size={14}/> Inelegível</span>
                           )}
                         </td>
                       </tr>

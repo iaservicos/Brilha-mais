@@ -44,6 +44,16 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   return <>{children}</>;
 };
 
+const RootRedirect = () => {
+  const { user } = useAuthStore();
+  const isElevated = user?.role === 'MODERADOR' || user?.role === 'ADMINISTRADOR' || user?.cargo === 'Administrador' || user?.cargo === 'Super Administrador';
+  
+  if (isElevated) {
+    return <Navigate to="/supervisao" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -64,7 +74,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* Redirecionamento padrão para rotas não encontradas */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   );
 }

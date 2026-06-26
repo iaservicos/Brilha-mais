@@ -8,6 +8,7 @@ export interface UserProfile {
   cargo?: string;
   localEquipe?: string;
   role?: string;
+  fotoPerfil?: string;
 }
 
 interface AuthState {

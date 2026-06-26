@@ -29,19 +29,19 @@ export const ChamadoItem = ({ item }: any) => {
 
       {/* Modal Overlay */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalOpen(false)}>
           {/* Modal Content */}
           <div 
             className="bg-light-surface dark:bg-surface rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className={`px-6 py-4 flex justify-between items-center text-white ${item.isLate ? 'bg-status-danger' : 'bg-accent-teal'}`}>
+            <div className={`px-6 py-4 flex justify-between items-center text-text-main ${item.isLate ? 'bg-status-danger' : 'bg-accent-teal'}`}>
               <div>
                 <h3 className="font-bold text-lg">{item.id}</h3>
                 <p className="text-xs opacity-90">{item.desc}</p>
               </div>
-              <button onClick={() => setModalOpen(false)} className="text-white hover:text-white/80 transition-colors">
+              <button onClick={() => setModalOpen(false)} className="text-text-main hover:text-text-main/80 transition-colors">
                 <XCircle size={24} />
               </button>
             </div>
@@ -82,7 +82,7 @@ export const ChamadoItem = ({ item }: any) => {
             <div className="px-6 py-4 bg-light-background dark:bg-background border-t border-light-border dark:border-border flex justify-end">
               <button 
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-light-text-secondary dark:text-white rounded-lg text-sm font-bold transition-colors"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-surface dark:hover:bg-slate-700 text-light-text-secondary dark:text-text-main rounded-lg text-sm font-bold transition-colors"
               >
                 Fechar
               </button>

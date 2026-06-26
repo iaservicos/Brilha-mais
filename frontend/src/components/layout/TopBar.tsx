@@ -1,8 +1,11 @@
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
-import { Sun, Moon, Bell, User, Settings, LogOut, Home, Users } from 'lucide-react';
+import { Sun, Moon, Bell, User, Settings, LogOut, Home, Users, HelpCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { api } from '../../services/api';
+import ModalConfiguracoes from './ModalConfiguracoes';
+import ModalAjuda from './ModalAjuda';
 
 export default function TopBar() {
   const { user, logout } = useAuthStore();
@@ -11,6 +14,8 @@ export default function TopBar() {
   const location = useLocation();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isAjudaOpen, setIsAjudaOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleTheme = () => {
@@ -33,6 +38,23 @@ export default function TopBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Buscar foto de perfil ao montar
+  useEffect(() => {
+    const fetchFoto = async () => {
+      if (user?.matricula && !user.fotoPerfil) {
+        try {
+          const res = await api.get(`/foto-perfil/${user.matricula}`);
+          if (res.data.foto) {
+            useAuthStore.getState().updateUser({ fotoPerfil: res.data.foto });
+          }
+        } catch (error) {
+          console.log('Sem foto de perfil ou erro ao buscar.');
+        }
+      }
+    };
+    fetchFoto();
+  }, [user?.matricula]);
+
   const isAdmin = user?.cargo === 'Administrador' || user?.cargo === 'Admin' || user?.cargo === 'Super Administrador';
   const isModerador = user?.role === 'MODERADOR';
   const isSupervisor = user?.role === 'ADMINISTRADOR';
@@ -47,13 +69,13 @@ export default function TopBar() {
 
       {/* Meio: Logo Brilha+ Centralizado */}
       <div 
-        className="absolute left-1/2 -translate-x-1/2 flex items-baseline cursor-pointer hover:opacity-80 transition-opacity select-none z-10"
-        onClick={() => navigate('/dashboard')}
+        className="absolute left-1/2 -translate-x-1/2 flex items-baseline cursor-pointer hover:opacity-100 transition-all duration-300 select-none z-10 group"
+        onClick={() => navigate(isAdmin || isModerador || isSupervisor ? '/supervisao' : '/dashboard')}
         style={{ fontFamily: "'Arial Black', Impact, sans-serif", letterSpacing: "-0.05em" }}
-        title="Voltar para o Dashboard"
+        title="Voltar para o Início"
       >
-        <h1 className="text-2xl font-black text-light-text-main dark:text-text-main uppercase">
-          Brilha<span className="text-3xl text-accent-teal ml-[1px] leading-none">+</span>
+        <h1 className="text-2xl font-black text-light-text-main dark:text-text-main uppercase transition-all duration-300 group-hover:text-[#0891b2] group-hover:drop-shadow-[0_0_8px_rgba(8,145,178,0.8)]">
+          Brilha<span className="text-3xl text-[#0891b2] ml-[1px] leading-none">+</span>
         </h1>
       </div>
 
@@ -92,8 +114,12 @@ export default function TopBar() {
                 {user?.cargo || 'Técnico N2'}
               </span>
             </div>
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-surface border border-light-borderStrong dark:border-border flex items-center justify-center text-light-text-muted dark:text-text-muted hover:bg-slate-200 transition-colors">
-              <User size={20} />
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-surface border border-light-borderStrong dark:border-border flex items-center justify-center text-light-text-muted dark:text-text-muted hover:bg-slate-200 transition-colors overflow-hidden">
+              {user?.fotoPerfil ? (
+                <img src={user.fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+              ) : (
+                <User size={20} />
+              )}
             </div>
           </div>
 
@@ -104,46 +130,63 @@ export default function TopBar() {
                 <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{user?.nomeCompleto}</p>
                 <p className="text-xs text-light-text-muted dark:text-text-muted truncate" title={user?.localEquipe}>{user?.localEquipe || 'Localidade não informada'}</p>
               </div>
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigate('/dashboard');
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Home size={16} className="mr-2" />
-                Dashboard
-              </button>
-
               {/* JSDoc: Administradores e Moderadores têm acesso ao Painel de Supervisão */}
-              {(isModerador || isSupervisor) && (
+              {location.pathname === '/configuracoes' && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     navigate('/supervisao');
                   }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-accent-teal hover:bg-accent-teal/10 transition-colors"
+                  className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main bg-transparent hover:text-[#0891b2] dark:hover:text-[#0891b2] transition-colors duration-200"
                 >
                   <Users size={16} className="mr-2" />
                   Painel de Supervisão
                 </button>
               )}
 
-              {isModerador && (
+              {isModerador && location.pathname === '/supervisao' && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     navigate('/configuracoes');
                   }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-accent-teal hover:bg-accent-teal/10 transition-colors"
+                  className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main bg-transparent hover:text-[#0891b2] dark:hover:text-[#0891b2] transition-colors duration-200"
                 >
                   <Settings size={16} className="mr-2" />
                   Painel de Ingestão
                 </button>
               )}
+
+              {/* Separador */}
+              {((location.pathname === '/configuracoes') || (isModerador && location.pathname === '/supervisao')) && (
+                <div className="h-px bg-light-borderStrong dark:bg-border my-1 mx-2"></div>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsConfigOpen(true);
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main bg-transparent hover:text-[#0891b2] dark:hover:text-[#0891b2] transition-colors duration-200"
+              >
+                <Settings size={16} className="mr-2" />
+                Configurações
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsAjudaOpen(true);
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main bg-transparent hover:text-[#0891b2] dark:hover:text-[#0891b2] transition-colors duration-200"
+              >
+                <HelpCircle size={16} className="mr-2" />
+                Ajuda
+              </button>
+
               <button
                 onClick={handleLogout}
-                className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 bg-transparent hover:text-red-500 dark:hover:text-red-500 transition-colors duration-200 mt-1"
               >
                 <LogOut size={16} className="mr-2" />
                 Sair
@@ -153,6 +196,8 @@ export default function TopBar() {
         </div>
       </div>
 
+      <ModalConfiguracoes isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+      <ModalAjuda isOpen={isAjudaOpen} onClose={() => setIsAjudaOpen(false)} />
     </header>
   );
 }

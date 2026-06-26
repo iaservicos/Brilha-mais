@@ -49,11 +49,15 @@ export default function OnboardingScreen() {
   };
 
   const handleFinish = () => {
-    navigate('/dashboard');
+    if (user?.role === 'MODERADOR' || user?.role === 'ADMINISTRADOR' || user?.cargo === 'Administrador') {
+      navigate('/supervisao');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-grid-pattern text-white p-4 overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center bg-grid-pattern text-text-main p-4 overflow-hidden relative">
       
       {/* Background decoration */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-accent-teal/20 rounded-full blur-[100px] pointer-events-none"></div>
@@ -69,7 +73,7 @@ export default function OnboardingScreen() {
             </div>
             <h1 className="text-4xl font-black mb-4">Bem-vindo(a) ao<br/><span className="text-brilhamais-gold">Brilha Mais!</span></h1>
             <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-              Olá, <strong className="text-white">{user?.nomeCompleto}</strong>! Este é o programa de reconhecimento e premiação da Positivo. Estamos muito felizes em ter você aqui.
+              Olá, <strong className="text-text-main">{user?.nomeCompleto}</strong>! Este é o programa de reconhecimento e premiação da Positivo. Estamos muito felizes em ter você aqui.
             </p>
             <button 
               onClick={() => setStep(1)}
@@ -108,12 +112,12 @@ export default function OnboardingScreen() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
-                  className="w-full bg-slate-900/50 border border-white/10 text-white rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:border-transparent transition-colors placeholder:text-light-text-muted"
+                  className="w-full bg-background/50 border border-border text-text-main rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:border-transparent transition-colors placeholder:text-light-text-muted"
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-4 text-light-text-muted hover:text-white transition-colors"
+                  className="absolute right-4 top-4 text-light-text-muted hover:text-text-main transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -127,7 +131,7 @@ export default function OnboardingScreen() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"
-                  className="w-full bg-slate-900/50 border border-white/10 text-white rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:border-transparent transition-colors placeholder:text-light-text-muted"
+                  className="w-full bg-background/50 border border-border text-text-main rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:border-transparent transition-colors placeholder:text-light-text-muted"
                 />
               </div>
 
@@ -150,32 +154,32 @@ export default function OnboardingScreen() {
             </h2>
             
             <div className="space-y-6">
-              <div className="bg-slate-900/40 p-5 rounded-2xl border border-white/5 flex gap-4 items-start hover:bg-slate-900/60 transition-colors">
+              <div className="bg-background/40 p-5 rounded-2xl border border-border flex gap-4 items-start hover:bg-background/60 transition-colors">
                 <div className="bg-blue-500/20 text-blue-400 p-3 rounded-xl shrink-0">
                   <span className="font-black text-xl">100</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-1">Você começa com 100 pontos</h3>
+                  <h3 className="text-lg font-bold text-text-main mb-1">Você começa com 100 pontos</h3>
                   <p className="text-light-text-muted text-sm leading-relaxed">Todo mês, você inicia com a nota máxima de 100 pontos de SLA e Reincidência. O seu objetivo é manter essa nota alta finalizando seus chamados dentro do prazo e com qualidade.</p>
                 </div>
               </div>
 
-              <div className="bg-slate-900/40 p-5 rounded-2xl border border-white/5 flex gap-4 items-start hover:bg-slate-900/60 transition-colors">
+              <div className="bg-background/40 p-5 rounded-2xl border border-border flex gap-4 items-start hover:bg-background/60 transition-colors">
                 <div className="bg-accent-teal/20 text-accent-teal p-3 rounded-xl shrink-0">
                   <CheckCircle2 size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-1">Métricas que Deduzem Pontos</h3>
+                  <h3 className="text-lg font-bold text-text-main mb-1">Métricas que Deduzem Pontos</h3>
                   <p className="text-light-text-muted text-sm leading-relaxed">Chamados Fora do SLA, Reincidências (até 3 meses) e Perdas de Performance reduzem sua nota gradativamente. Mantenha as taxas baixas!</p>
                 </div>
               </div>
 
-              <div className="bg-slate-900/40 p-5 rounded-2xl border border-white/5 flex gap-4 items-start hover:bg-slate-900/60 transition-colors">
+              <div className="bg-background/40 p-5 rounded-2xl border border-border flex gap-4 items-start hover:bg-background/60 transition-colors">
                 <div className="bg-brilhamais-gold/20 text-brilhamais-gold p-3 rounded-xl shrink-0">
                   <Award size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-1">Bônus Adicionais</h3>
+                  <h3 className="text-lg font-bold text-text-main mb-1">Bônus Adicionais</h3>
                   <p className="text-light-text-muted text-sm leading-relaxed">Avaliações NPS positivas de clientes (Promotores) e baixa utilização desnecessária de peças adicionam pontos extras valiosos à sua média!</p>
                 </div>
               </div>
@@ -198,7 +202,7 @@ export default function OnboardingScreen() {
             <div className="mx-auto w-24 h-24 bg-brilhamais-gold text-light-text-main rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(250,204,21,0.5)]">
               <Trophy size={48} />
             </div>
-            <h2 className="text-4xl font-black mb-4 text-white">Tudo Pronto!</h2>
+            <h2 className="text-4xl font-black mb-4 text-text-main">Tudo Pronto!</h2>
             <p className="text-brilhamais-gold/80 text-lg mb-8 font-medium">
               Agora você já conhece as regras para conquistar seu lugar no ranking de premiações.
             </p>

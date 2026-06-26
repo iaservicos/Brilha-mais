@@ -20,8 +20,8 @@ export default {
           light: '#fef08a',
         },
         accent: {
-          teal: '#00d8a6',    // Teal/Turquesa brilhante
-          emerald: '#10b981', // Verde esmeralda para botões e variações
+          teal: '#22d3ee',    // Teal/Turquesa brilhante
+          emerald: '#0891b2', // Verde esmeralda para botões e variações
         },
         // Cores da Paleta Brilha Mais (Dark Mode & UI Gamificada - Neon/Cyber)
         background: '#0b1120', // Fundo principal escuro, tom azulado sutil
@@ -70,7 +70,7 @@ export default {
     },
   },
   plugins: [
-    function({ addUtilities }) {
+    function ({ addUtilities }) {
       addUtilities({
         '.bg-grid-pattern': {
           'background-color': '#040d1c',

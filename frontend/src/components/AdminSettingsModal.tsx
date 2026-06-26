@@ -67,11 +67,11 @@ export default function AdminSettingsModal({ isOpen, onClose }: AdminSettingsMod
   if (!isOpen || !isAdmin) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-light-surface dark:bg-surface rounded-positivo-xl shadow-xl w-full max-w-lg overflow-hidden border border-light-borderStrong dark:border-border animate-in zoom-in-95 duration-200">
         
         {/* Header do Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-light-border dark:border-border bg-light-background dark:bg-slate-800/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-light-border dark:border-border bg-light-background dark:bg-surface/50">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-positivo-primary/10 rounded-lg text-positivo-primary">
               <Calendar size={20} />
@@ -140,7 +140,7 @@ export default function AdminSettingsModal({ isOpen, onClose }: AdminSettingsMod
                   <button
                     type="submit"
                     disabled={saving || !dataInicio || !dataFim}
-                    className="w-full flex justify-center items-center px-4 py-2.5 bg-positivo-primary text-white rounded-lg font-bold hover:bg-positivo-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-positivo-primary disabled:opacity-50 transition-colors shadow-sm"
+                    className="w-full flex justify-center items-center px-4 py-2.5 bg-positivo-primary text-text-main rounded-lg font-bold hover:bg-positivo-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-positivo-primary disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {saving ? (
                       <span className="flex items-center">

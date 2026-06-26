@@ -33,11 +33,11 @@ public class CalculoMetricasRepository {
         public BigDecimal calcularPercentualReincidenciaEquipe(int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
                 StringBuilder sql1 = new StringBuilder("SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r "
-                                + "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90");
+                                + "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90 AND r.projeto_anterior <> 'H3-03535'");
 
                 StringBuilder sql2 = new StringBuilder(
                                 "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c "
-                                                + "WHERE c.ft >= ? AND c.ft < ?");
+                                                + "WHERE c.ft >= ? AND c.ft < ? AND c.projeto <> 'H3-03535'");
 
                 Object[] args1 = buildArgs(idTecnico, ctBase, inicio, fim, sql1, "r", "ct_anterior", "tecnico_anterior_id_not_used");
                 Object[] args2 = buildArgs(idTecnico, ctBase, inicio, fim, sql2, "c", "assistencia_codigo", "id_tecnico_not_used");
@@ -93,14 +93,14 @@ public class CalculoMetricasRepository {
         public BigDecimal calcularPercentualReincidenciaIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
                 String sql1 = "SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r JOIN tb_tecnico t ON UPPER(TRIM(r.tecnico_nome_anterior)) = UPPER(TRIM(t.nome_completo)) "
                                 +
-                                "WHERE t.id_tecnico = ? AND r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90";
+                                "WHERE t.id_tecnico = ? AND r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90 AND r.projeto_anterior <> 'H3-03535'";
                 long qtd = ((Number) jdbcTemplate.queryForMap(sql1, idTecnico, inicio, fim.plusDays(1))
                                 .getOrDefault("qtd", 0))
                                 .longValue();
 
                 String sql2 = "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c " +
                                 "JOIN tb_tecnico t ON UPPER(TRIM(c.tecnico_nome)) = UPPER(TRIM(t.nome_completo)) " +
-                                "WHERE t.id_tecnico = ? AND c.ft >= ? AND c.ft < ?";
+                                "WHERE t.id_tecnico = ? AND c.ft >= ? AND c.ft < ? AND c.projeto <> 'H3-03535'";
                 long base = ((Number) jdbcTemplate.queryForMap(sql2, idTecnico, inicio, fim.plusDays(1)).getOrDefault(
                                 "total",
                                 0)).longValue();
