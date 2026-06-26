@@ -21,19 +21,32 @@ public class DashboardController {
     private final DashboardService dashboardService;
     private final MotorCalculoService motorCalculoService;
     private final CampanhaRepository campanhaRepository;
+    private final br.com.positivo.brilhamais.repositories.ApuracaoMensalRepository apuracaoRepository;
 
     @GetMapping("/ranking")
     public ResponseEntity<List<RankingDTO>> getRanking(
             @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno) {
+        Campanha campanha = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
+        
         if (mesAno == null) {
-            Campanha campanha = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
             if (campanha != null) {
                 mesAno = campanha.getDataFim(); // Média final (ou mês final)
             } else {
-                mesAno = LocalDate.now().minusMonths(1).withDayOfMonth(1);
+                mesAno = apuracaoRepository.findMaxMesAno().orElse(LocalDate.now().minusMonths(1).withDayOfMonth(1));
             }
         }
-        return ResponseEntity.ok(dashboardService.getRankingMensal(mesAno));
+        
+        List<RankingDTO> ranking = dashboardService.getRankingMensal(mesAno);
+        
+        // Se a data atual não tiver resultados e usamos a campanha ativa que acabou de fechar, tentar a última data disponível
+        if ((ranking == null || ranking.isEmpty()) && campanha != null) {
+             LocalDate maxData = apuracaoRepository.findMaxMesAno().orElse(null);
+             if (maxData != null && !maxData.equals(mesAno)) {
+                 ranking = dashboardService.getRankingMensal(maxData);
+             }
+        }
+        
+        return ResponseEntity.ok(ranking);
     }
 
     @PostMapping("/calcular")

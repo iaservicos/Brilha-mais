@@ -10,6 +10,7 @@ import RankingScreen from '../screens/RankingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import { useAuthStore } from '../store/authStore';
 
 interface ProtectedRouteProps {
@@ -58,6 +59,8 @@ export default function AppRoutes() {
         <Route path="/ranking" element={<RankingScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
         <Route path="/configuracoes" element={<ProtectedRoute allowedRoles={['MODERADOR']}><SettingsScreen /></ProtectedRoute>} />
+        {/* JSDoc: Administradores e Moderadores têm acesso à Supervisão */}
+        <Route path="/supervisao" element={<ProtectedRoute allowedRoles={['MODERADOR', 'ADMINISTRADOR']}><AdminDashboardScreen /></ProtectedRoute>} />
       </Route>
 
       {/* Redirecionamento padrão para rotas não encontradas */}

@@ -1,9 +1,8 @@
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
-import { Sun, Moon, Bell, User, Settings, LogOut } from 'lucide-react';
+import { Sun, Moon, Bell, User, Settings, LogOut, Home, Users } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import AdminSettingsModal from '../AdminSettingsModal';
 
 export default function TopBar() {
   const { user, logout } = useAuthStore();
@@ -12,7 +11,6 @@ export default function TopBar() {
   const location = useLocation();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleTheme = () => {
@@ -37,6 +35,7 @@ export default function TopBar() {
 
   const isAdmin = user?.cargo === 'Administrador' || user?.cargo === 'Admin' || user?.cargo === 'Super Administrador';
   const isModerador = user?.role === 'MODERADOR';
+  const isSupervisor = user?.role === 'ADMINISTRADOR';
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-light-surface dark:bg-background shadow-sm border-b border-light-borderStrong dark:border-border z-40 h-20 flex items-center justify-between px-6 pt-safe">
@@ -46,11 +45,17 @@ export default function TopBar() {
         <img src="/Logo/positivo.svg" alt="Positivo Brilha Mais" className="h-16 md:h-28 object-contain" />
       </div>
 
-      {/* Meio: Navegação Desktop */}
-      <nav className="hidden md:flex items-center space-x-8 absolute left-1/2 -translate-x-1/2">
-        <Link to="/dashboard" className={`hidden text-sm font-semibold transition-colors ${location.pathname === '/dashboard' ? 'text-brilhamais-gold' : 'text-light-text-muted hover:text-light-text-secondary dark:text-text-muted dark:hover:text-text-main'}`}>Dashboard</Link>
-        <Link to="/ranking" className={`hidden text-sm font-semibold transition-colors ${location.pathname === '/ranking' ? 'text-brilhamais-gold' : 'text-light-text-muted hover:text-light-text-secondary dark:text-text-muted dark:hover:text-text-main'}`}>Ranking</Link>
-      </nav>
+      {/* Meio: Logo Brilha+ Centralizado */}
+      <div 
+        className="absolute left-1/2 -translate-x-1/2 flex items-baseline cursor-pointer hover:opacity-80 transition-opacity select-none z-10"
+        onClick={() => navigate('/dashboard')}
+        style={{ fontFamily: "'Arial Black', Impact, sans-serif", letterSpacing: "-0.05em" }}
+        title="Voltar para o Dashboard"
+      >
+        <h1 className="text-2xl font-black text-light-text-main dark:text-text-main uppercase">
+          Brilha<span className="text-3xl text-accent-teal ml-[1px] leading-none">+</span>
+        </h1>
+      </div>
 
       {/* Direita: Ações e Perfil */}
       <div className="flex items-center space-x-4 md:space-x-6">
@@ -99,18 +104,31 @@ export default function TopBar() {
                 <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{user?.nomeCompleto}</p>
                 <p className="text-xs text-light-text-muted dark:text-text-muted truncate" title={user?.localEquipe}>{user?.localEquipe || 'Localidade não informada'}</p>
               </div>
-              {isAdmin && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate('/dashboard');
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Home size={16} className="mr-2" />
+                Dashboard
+              </button>
+
+              {/* JSDoc: Administradores e Moderadores têm acesso ao Painel de Supervisão */}
+              {(isModerador || isSupervisor) && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
-                    setIsSettingsModalOpen(true);
+                    navigate('/supervisao');
                   }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-center w-full px-4 py-2 text-sm text-accent-teal hover:bg-accent-teal/10 transition-colors"
                 >
-                  <Settings size={16} className="mr-2" />
-                  Preferências Visuais
+                  <Users size={16} className="mr-2" />
+                  Painel de Supervisão
                 </button>
               )}
+
               {isModerador && (
                 <button
                   onClick={() => {
@@ -135,11 +153,6 @@ export default function TopBar() {
         </div>
       </div>
 
-      {/* Modal de Configurações */}
-      <AdminSettingsModal 
-        isOpen={isSettingsModalOpen} 
-        onClose={() => setIsSettingsModalOpen(false)} 
-      />
     </header>
   );
 }

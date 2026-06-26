@@ -112,3 +112,6 @@ backend/revert_*.py
 # Cache/Gerados do Frontend
 *.tsbuildinfo
 output.css
+
+# Arquivos temporários do projeto
+scratch/

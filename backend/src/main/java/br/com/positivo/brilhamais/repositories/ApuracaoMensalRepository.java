@@ -21,4 +21,7 @@ public interface ApuracaoMensalRepository extends JpaRepository<ApuracaoMensal, 
 
     @Query("SELECT a FROM ApuracaoMensal a WHERE a.tecnico.idTecnico IN :ids ORDER BY a.mesAno ASC")
     List<ApuracaoMensal> findHistoricoByTecnicoIds(List<Integer> ids);
+
+    @Query("SELECT MAX(a.mesAno) FROM ApuracaoMensal a")
+    Optional<LocalDate> findMaxMesAno();
 }

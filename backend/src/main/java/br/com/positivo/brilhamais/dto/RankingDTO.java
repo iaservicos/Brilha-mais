@@ -45,6 +45,7 @@ public class RankingDTO {
     private String motivoInelegibilidade;
     private LocalDate mesReferencia;
     private String matricula;
+    private String localEquipe;
     
     private java.util.List<HistoricoDTO> historico;
 }

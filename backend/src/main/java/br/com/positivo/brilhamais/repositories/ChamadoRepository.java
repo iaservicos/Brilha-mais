@@ -12,8 +12,8 @@ import java.util.List;
 public interface ChamadoRepository extends JpaRepository<Chamado, Long> {
     
     // Busca todos os chamados finalizados do técnico, utilizando a matrícula
-    List<Chamado> findAllByTecnicoMatriculaAndDataEncerramentoIsNotNullOrderByDataEncerramentoDesc(String matricula);
+    List<Chamado> findAllByTecnicoMatriculaAndDataFtIsNotNullOrderByDataFtDesc(String matricula);
 
-    @Query("SELECT c FROM Chamado c WHERE c.tecnico.idTecnico IN :ids AND c.dataEncerramento IS NOT NULL AND c.dataEncerramento >= :dataInicio AND c.dataEncerramento <= :dataFim ORDER BY c.dataEncerramento DESC")
+    @Query("SELECT c FROM Chamado c WHERE c.tecnico.idTecnico IN :ids AND c.dataFt IS NOT NULL AND c.dataFt >= :dataInicio AND c.dataFt <= :dataFim ORDER BY c.dataFt DESC")
     List<Chamado> findChamadosRecentesPorTecnicos(List<Integer> ids, LocalDateTime dataInicio, LocalDateTime dataFim);
 }

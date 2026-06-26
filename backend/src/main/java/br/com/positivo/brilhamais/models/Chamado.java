@@ -14,40 +14,46 @@ import java.time.LocalDateTime;
 public class Chamado {
 
     @Id
-    @Column(name = "numero_chamado")
+    @Column(name = "chamado")
     private Long numeroChamado;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_tecnico")
     private Tecnico tecnico;
 
-    @Column(name = "ct_base")
-    private String ctBase;
+    @Column(name = "projeto")
+    private String projeto;
 
-    @Column(name = "data_abertura", nullable = false)
-    private LocalDateTime dataAbertura;
+    @Column(name = "ft")
+    private LocalDateTime dataFt;
 
-    @Column(name = "data_encerramento")
-    private LocalDateTime dataEncerramento;
-
-    @Column(name = "segmento")
-    private String segmento;
+    @Column(name = "sla_status")
+    private String statusSla;
 
     @Column(name = "equipamento")
     private String equipamento;
 
-    @Column(name = "projeto")
-    private String projeto;
+    @Column(name = "material_descricao")
+    private String materialDescricao;
 
-    @Column(name = "status_sla")
-    private String statusSla;
+    @Column(name = "comercial")
+    private String comercial;
 
-    @Column(name = "tempo_atendimento_min")
-    private Integer tempoAtendimentoMin;
+    @Column(name = "assistencia_centro_trabalho")
+    private String ctBase;
+
+    @Column(name = "assistencia_nome")
+    private String assistenciaNome;
+
+    @Column(name = "tecnico_nome")
+    private String tecnicoNome;
 
     @Column(name = "classificacao_chamado")
     private String classificacaoChamado;
 
-    @Column(name = "encdesc")
-    private String encdesc;
+    @Column(name = "texto_encerrado")
+    private String textoEncerrado;
+
+    @Column(name = "reincidente")
+    private String reincidente;
 }

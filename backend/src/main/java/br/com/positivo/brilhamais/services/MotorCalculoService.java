@@ -81,6 +81,9 @@ public class MotorCalculoService {
         apFinal.setAtingimentoReincidencia(calcularMedia(ap1.getAtingimentoReincidencia(), ap2.getAtingimentoReincidencia()));
         apFinal.setPontosReincidencia((ap1.getPontosReincidencia() + ap2.getPontosReincidencia()) / 2.0);
         
+        apFinal.setAtingimentoReincidenciaEquipe(calcularMedia(ap1.getAtingimentoReincidenciaEquipe(), ap2.getAtingimentoReincidenciaEquipe()));
+        apFinal.setPontosReincidenciaEquipe((ap1.getPontosReincidenciaEquipe() + ap2.getPontosReincidenciaEquipe()) / 2.0);
+        
         apFinal.setAtingimentoPecas(calcularMedia(ap1.getAtingimentoPecas(), ap2.getAtingimentoPecas()));
         apFinal.setPontosPecas((ap1.getPontosPecas() + ap2.getPontosPecas()) / 2.0);
         

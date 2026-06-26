@@ -1,6 +1,7 @@
 package br.com.positivo.brilhamais.security;
 
 import br.com.positivo.brilhamais.repositories.TecnicoRepository;
+import br.com.positivo.brilhamais.repositories.SupervisorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,11 +19,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class ApplicationConfig {
 
     private final TecnicoRepository tecnicoRepository;
+    private final SupervisorRepository supervisorRepository;
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> tecnicoRepository.findByMatricula(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Técnico não encontrado com matrícula: " + username));
+        return username -> {
+            var tecnico = tecnicoRepository.findByMatricula(username);
+            if (tecnico.isPresent()) {
+                return tecnico.get();
+            }
+            return supervisorRepository.findByMatricula(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com matrícula: " + username));
+        };
     }
 
     @Bean

@@ -11,9 +11,10 @@ interface UploadCardProps {
   onUpload: (type: SpreadSheetType, file: File) => void;
   status: 'idle' | 'uploading' | 'success' | 'error';
   message?: string;
+  progress?: number;
 }
 
-const UploadCard = ({ type, title, description, onUpload, status, message }: UploadCardProps) => {
+const UploadCard = ({ type, title, description, onUpload, status, message, progress }: UploadCardProps) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       onUpload(type, e.target.files[0]);
@@ -56,7 +57,22 @@ const UploadCard = ({ type, title, description, onUpload, status, message }: Upl
         </label>
       </div>
 
-      {message && (
+      {status === 'uploading' && progress !== undefined && (
+        <div className="mt-4">
+          <div className="flex justify-between text-xs font-semibold mb-1">
+            <span className="text-accent-teal">{message || (progress === 100 ? 'Iniciando processamento...' : 'Enviando arquivo...')}</span>
+            <span className="text-slate-400">{progress}%</span>
+          </div>
+          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div 
+              className={`h-1.5 rounded-full transition-all duration-300 ${progress === 100 && !message?.includes('inserindo') ? 'bg-accent-teal animate-pulse' : 'bg-accent-teal'}`} 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
+      {message && status !== 'uploading' && (
         <div className={`mt-4 p-3 rounded-lg text-xs font-medium ${status === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
           {message}
         </div>
@@ -66,15 +82,15 @@ const UploadCard = ({ type, title, description, onUpload, status, message }: Upl
 };
 
 export default function SettingsScreen() {
-  const [uploadStatus, setUploadStatus] = useState<Record<SpreadSheetType, { status: 'idle' | 'uploading' | 'success' | 'error', message?: string }>>({
-    BaseDL: { status: 'idle' },
-    Parts: { status: 'idle' },
-    Reincidencia: { status: 'idle' },
-    EncerradosRRC: { status: 'idle' }
+  const [uploadStatus, setUploadStatus] = useState<Record<SpreadSheetType, { status: 'idle' | 'uploading' | 'success' | 'error', message?: string, progress?: number }>>({
+    BaseDL: { status: 'idle', progress: 0 },
+    Parts: { status: 'idle', progress: 0 },
+    Reincidencia: { status: 'idle', progress: 0 },
+    EncerradosRRC: { status: 'idle', progress: 0 }
   });
 
   const handleUpload = async (type: SpreadSheetType, file: File) => {
-    setUploadStatus(prev => ({ ...prev, [type]: { status: 'uploading', message: 'Enviando arquivo...' } }));
+    setUploadStatus(prev => ({ ...prev, [type]: { status: 'uploading', progress: 0, message: 'Enviando arquivo para o servidor...' } }));
 
     const formData = new FormData();
     formData.append('file', file);
@@ -86,18 +102,63 @@ export default function SettingsScreen() {
       const response = await axios.post(`${baseURL}/api/ingestion/upload?type=${type}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadStatus(prev => {
+              // Só atualizamos via Axios se ainda for a fase de rede (Enviando arquivo)
+              if (prev[type].status === 'uploading' && prev[type].message?.includes('Enviando arquivo')) {
+                 return { ...prev, [type]: { status: 'uploading', progress: percentCompleted, message: `Enviando arquivo... ${percentCompleted}%` } };
+              }
+              return prev;
+            });
+          }
         }
       });
       
-      setUploadStatus(prev => ({ 
-        ...prev, 
-        [type]: { status: 'success', message: response.data.message || 'Arquivo processado com sucesso.' } 
-      }));
+      const taskId = response.data.task_id;
+      
+      // Começa o polling a cada 1 segundo
+      const intervalId = setInterval(async () => {
+        try {
+          const progressResponse = await axios.get(`${baseURL}/api/ingestion/progress/${taskId}`);
+          const { status, progress, message } = progressResponse.data;
+
+          if (status === 'completed') {
+            clearInterval(intervalId);
+            setUploadStatus(prev => ({ 
+              ...prev, 
+              [type]: { status: 'success', message: message || 'Arquivo processado com sucesso.', progress: 100 } 
+            }));
+          } else if (status === 'error') {
+            clearInterval(intervalId);
+            setUploadStatus(prev => ({ 
+              ...prev, 
+              [type]: { status: 'error', message: message || 'Erro durante o processamento.', progress: 0 } 
+            }));
+          } else {
+            // processing
+            setUploadStatus(prev => ({ 
+              ...prev, 
+              [type]: { status: 'uploading', progress: progress, message: message } 
+            }));
+          }
+        } catch (pollError) {
+           console.error("Erro no polling", pollError);
+           clearInterval(intervalId);
+           setUploadStatus(prev => ({ 
+             ...prev, 
+             [type]: { status: 'error', message: 'Falha ao buscar progresso do servidor.', progress: 0 } 
+           }));
+        }
+      }, 1000);
+
     } catch (error: any) {
       console.error("Erro no upload", error);
       setUploadStatus(prev => ({ 
         ...prev, 
-        [type]: { status: 'error', message: error.response?.data?.detail || 'Erro ao processar planilha.' } 
+        [type]: { status: 'error', message: error.response?.data?.detail || 'Erro ao processar planilha.', progress: 0 } 
       }));
     }
   };
@@ -128,6 +189,7 @@ export default function SettingsScreen() {
             description="Planilha principal contendo todos os chamados da base DL e indicadores de SLA (IND_SLA_GERAL_GOV_CORP)."
             status={uploadStatus.BaseDL.status}
             message={uploadStatus.BaseDL.message}
+            progress={uploadStatus.BaseDL.progress}
             onUpload={handleUpload}
           />
           <UploadCard 
@@ -136,6 +198,7 @@ export default function SettingsScreen() {
             description="Planilha contendo o detalhamento de peças aplicadas por chamado."
             status={uploadStatus.Parts.status}
             message={uploadStatus.Parts.message}
+            progress={uploadStatus.Parts.progress}
             onUpload={handleUpload}
           />
           <UploadCard 
@@ -144,6 +207,7 @@ export default function SettingsScreen() {
             description="Planilha contendo os apontamentos de chamados reincidentes (voltas)."
             status={uploadStatus.Reincidencia.status}
             message={uploadStatus.Reincidencia.message}
+            progress={uploadStatus.Reincidencia.progress}
             onUpload={handleUpload}
           />
           <UploadCard 
@@ -152,6 +216,7 @@ export default function SettingsScreen() {
             description="Planilha base de encerrados, utilizada como divisor (base) para o cálculo percentual de reincidência."
             status={uploadStatus.EncerradosRRC.status}
             message={uploadStatus.EncerradosRRC.message}
+            progress={uploadStatus.EncerradosRRC.progress}
             onUpload={handleUpload}
           />
         </div>

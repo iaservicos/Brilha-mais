@@ -1,14 +1,16 @@
 import os
 import io
 import pandas as pd
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import uuid
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, text
 from datetime import datetime
+from sqlalchemy import create_engine, text
 
+# Inicialização do App FastAPI para o microserviço de ingestão
 app = FastAPI(title="Brilha+ Ingestion API")
 
-# Allow CORS for the frontend
+# Habilitando CORS para permitir chamadas do frontend (React)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,165 +19,468 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuração do banco de dados via env
+# ==============================================================================
+# CONFIGURAÇÃO DO BANCO DE DADOS
+# ==============================================================================
+# A URL de conexão vem do docker-compose ou do ambiente local
 DB_URL = os.getenv('DATABASE_URL')
 if not DB_URL:
     raise RuntimeError("A variável de ambiente DATABASE_URL não está configurada.")
-engine = create_engine(DB_URL)
 
-def process_base_dl(file_contents: bytes):
-    df = pd.read_excel(io.BytesIO(file_contents), sheet_name='Base DL')
-    df = df.dropna(subset=['Chamado', 'Tecnico_nome'])
-    
-    with engine.connect() as conn:
-        # Pega bases e tecnicos existentes
-        bases_existentes = {row[0] for row in conn.execute(text("SELECT ct_codigo FROM tb_base_atp")).fetchall()}
-        df_tec = pd.read_sql("SELECT id_tecnico, UPPER(nome_completo) as nome FROM tb_tecnico", conn)
-        tec_map = pd.Series(df_tec.id_tecnico.values, index=df_tec.nome).to_dict()
+# Criando a engine de conexão síncrona do SQLAlchemy com resiliência de pool
+engine = create_engine(
+    DB_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=0
+)
+
+# Dicionário em memória para rastrear o progresso de cada BackgroundTask
+# A chave é o task_id (UUID) gerado na hora do upload.
+task_progress = {}
+
+# ==============================================================================
+# PROCESSADORES ASSÍNCRONOS DE PLANILHAS (BACKGROUND TASKS)
+# ==============================================================================
+
+def process_base_dl(task_id: str, file_contents: bytes):
+    """Processa a planilha principal Base DL e popula tb_chamado."""
+    try:
+        # 1. Fase de leitura do arquivo binário na memória via Pandas
+        task_progress[task_id] = {"status": "processing", "progress": 0, "message": "Lendo planilha Base DL no Pandas..."}
+        df = pd.read_excel(io.BytesIO(file_contents), sheet_name=0)
         
-        chamados_insert = []
-        for _, row in df.iterrows():
-            chamado_num = int(row['Chamado'])
-            nome_tec = str(row['Tecnico_nome']).strip().upper()
-            id_tec = tec_map.get(nome_tec)
+        # Validação Exata das Colunas Requeridas
+        colunas_esperadas = ['Chamado', 'Projeto', 'FT', 'SLA_status', 'Equipamento', 
+                             'Material_descricao', 'Comercial', 'Assistencia_centro_trabalho', 
+                             'Assistencia_nome', 'Tecnico_nome', 'Texto_encerrado', 'Reincidente', 'Classifica_chamado']
+        colunas_faltantes = [c for c in colunas_esperadas if c not in df.columns]
+        
+        if colunas_faltantes:
+            raise KeyError(f"Erro de Validação: As seguintes colunas NÃO foram encontradas na Base DL: {colunas_faltantes}. As colunas lidas foram: {list(df.columns)}. Ajuste o Excel para que tenha exatamente as 12 colunas esperadas.")
+
+        # Limpeza básica: ignora linhas sem número de Chamado ou nome de Técnico
+        df = df.dropna(subset=['Chamado', 'Tecnico_nome'])
+        total_rows = len(df)
+        
+        with engine.connect() as conn:
+            # 2. Pré-carregamento de relacionamentos para validação (Base e Técnico)
+            task_progress[task_id] = {"status": "processing", "progress": 10, "message": "Buscando técnicos..."}
             
-            # Se o tecnico não existe, podemos pular ou cadastrar. Para simplicidade e integridade, inserimos nulo se não houver mapeamento
-            # mas o ideal seria a planilha de técnicos já ter rodado antes.
+            # Mapeamento do nome do técnico para o ID relacional
+            df_tec = pd.read_sql("SELECT id_tecnico, UPPER(nome_completo) as nome FROM tb_tecnico", conn)
+            tec_map = pd.Series(df_tec.id_tecnico.values, index=df_tec.nome).to_dict()
             
-            ta_str = str(row.get('TA', '0'))
-            minutos = 0
-            if ':' in ta_str:
-                parts = ta_str.split(':')
-                if len(parts) >= 2:
+            # 3. Tratamento e transformação linha a linha
+            chamados_insert = []
+            for _, row in df.iterrows():
+                chamado_num = int(row['Chamado'])
+                nome_tec = str(row['Tecnico_nome']).strip().upper()
+                id_tec = tec_map.get(nome_tec) # Resgata o ID pelo nome exato
+                
+                # Trata as datas
+                val_ft = row.get('FT')
+                data_ft = None
+                if pd.notna(val_ft) and str(val_ft).strip():
                     try:
-                        minutos = int(parts[0]) * 60 + int(parts[1])
-                    except: pass
+                        parsed_ft = pd.to_datetime(val_ft, dayfirst=False) if not isinstance(val_ft, datetime) else val_ft
+                        if pd.notna(parsed_ft):
+                            data_ft = parsed_ft
+                    except Exception:
+                        pass
+
+                chamados_insert.append({
+                    'chamado': chamado_num,
+                    'projeto': str(row.get('Projeto'))[:255] if pd.notna(row.get('Projeto')) else None,
+                    'ft': data_ft,
+                    'sla_status': str(row.get('SLA_status')).strip().lower()[:255] if pd.notna(row.get('SLA_status')) else None,
+                    'equipamento': str(row.get('Equipamento'))[:255] if pd.notna(row.get('Equipamento')) else None,
+                    'material_descricao': str(row.get('Material_descricao'))[:255] if pd.notna(row.get('Material_descricao')) else None,
+                    'comercial': str(row.get('Comercial'))[:255] if pd.notna(row.get('Comercial')) else None,
+                    'assistencia_centro_trabalho': str(row.get('Assistencia_centro_trabalho'))[:255] if pd.notna(row.get('Assistencia_centro_trabalho')) else None,
+                    'assistencia_nome': str(row.get('Assistencia_nome'))[:255] if pd.notna(row.get('Assistencia_nome')) else None,
+                    'tecnico_nome': str(row.get('Tecnico_nome'))[:255] if pd.notna(row.get('Tecnico_nome')) else None,
+                    'texto_encerrado': str(row.get('Texto_encerrado')) if pd.notna(row.get('Texto_encerrado')) else None,
+                    'reincidente': str(row.get('Reincidente'))[:255] if pd.notna(row.get('Reincidente')) else None,
+                    'classificacao_chamado': str(row.get('Classifica_chamado'))[:255] if pd.notna(row.get('Classifica_chamado')) else None,
+                    'id_tecnico': id_tec
+                })
+
+            # 4. Inserção em lotes de 1.000 para não estourar a memória/timeout do banco
+            for i in range(0, len(chamados_insert), 1000):
+                chunk = chamados_insert[i:i+1000]
+                
+                # O progresso de inserção representa de 10% a 100% da tarefa
+                current_progress = 10 + int((i / total_rows) * 90)
+                task_progress[task_id] = {
+                    "status": "processing", 
+                    "progress": current_progress, 
+                    "message": f"Banco: inserindo lote {min(i+1000, total_rows)}/{total_rows}"
+                }
+                
+                # Ingestão Incremental: Se o chamado já existir, ele é ignorado (DO NOTHING)
+                conn.execute(text("""
+                    INSERT INTO tb_chamado (chamado, projeto, ft, sla_status, equipamento, material_descricao, comercial, 
+                    assistencia_centro_trabalho, assistencia_nome, tecnico_nome, texto_encerrado, reincidente, classificacao_chamado, id_tecnico) 
+                    VALUES (:chamado, :projeto, :ft, :sla_status, :equipamento, :material_descricao, :comercial, 
+                    :assistencia_centro_trabalho, :assistencia_nome, :tecnico_nome, :texto_encerrado, :reincidente, :classificacao_chamado, :id_tecnico)
+                    ON CONFLICT (chamado) DO UPDATE SET 
+                    projeto = EXCLUDED.projeto, 
+                    ft = EXCLUDED.ft, 
+                    sla_status = EXCLUDED.sla_status, 
+                    equipamento = EXCLUDED.equipamento, 
+                    material_descricao = EXCLUDED.material_descricao, 
+                    comercial = EXCLUDED.comercial, 
+                    assistencia_centro_trabalho = EXCLUDED.assistencia_centro_trabalho, 
+                    assistencia_nome = EXCLUDED.assistencia_nome, 
+                    tecnico_nome = EXCLUDED.tecnico_nome, 
+                    texto_encerrado = EXCLUDED.texto_encerrado, 
+                    reincidente = EXCLUDED.reincidente, 
+                    classificacao_chamado = EXCLUDED.classificacao_chamado,
+                    id_tecnico = EXCLUDED.id_tecnico
+                """), chunk)
+                conn.commit()
+        
+        # Conclusão com sucesso
+        task_progress[task_id] = {"status": "completed", "progress": 100, "message": f"Sucesso! {total_rows} chamados lidos (inseridos apenas os novos)."}
+    except Exception as e:
+        task_progress[task_id] = {"status": "error", "progress": 0, "message": str(e)}
+
+def process_parts(task_id: str, file_contents: bytes):
+    """Processa o consumo de peças (planilha paralela)."""
+    try:
+        task_progress[task_id] = {"status": "processing", "progress": 0, "message": "Lendo planilha de Peças..."}
+        df = pd.read_excel(io.BytesIO(file_contents))
+        
+        # Converte as colunas para minúsculo para evitar erros de digitação (Case Insensitive)
+        import unicodedata
+        def normalize_col(c):
+            s = unicodedata.normalize('NFKD', str(c)).encode('ASCII', 'ignore').decode('utf-8')
+            return s.strip().lower().replace(' ', '_')
             
-            raw_base = row.get('Assistencia_centro_trabalho')
-            ct_base = None
-            if pd.notna(raw_base) and str(raw_base).strip() != '':
-                ct_base = str(int(raw_base)) if isinstance(raw_base, float) else str(raw_base).strip()
-            if ct_base not in bases_existentes:
-                ct_base = None
+        df.columns = [normalize_col(c) for c in df.columns]
+        
+        # Validação Exata das Colunas Requeridas
+        colunas_esperadas = ['chamado', 'ct', 'atp', 'ft', 'segmento', 'projeto', 'equipamento', 'sintoma', 'tecnico_nome', 'subgrupo', 'acao']
+        colunas_faltantes = [c for c in colunas_esperadas if c not in df.columns]
+        if colunas_faltantes:
+            raise KeyError(f"Erro de Validação: As seguintes colunas NÃO foram encontradas na planilha de Peças: {colunas_faltantes}. As colunas lidas foram: {list(df.columns)}. Ajuste o Excel para que fique exatamente igual ao esperado.")
+            
+        df = df.dropna(subset=['chamado'])
+        total_rows = len(df)
+        
+        with engine.begin() as conn:
+            # PROTEÇÃO DE DUPLICIDADE: Busca os (chamado, subgrupo) já existentes para não duplicar peças idênticas do mesmo chamado
+            pecas_existentes = {(str(r[0]), str(r[1])) for r in conn.execute(text("SELECT chamado, subgrupo FROM tb_consumo_peca")).fetchall()}
 
-            abertura = row.get('Abertura')
-            encerramento = row.get('fechamento_sistema') if pd.notna(row.get('fechamento_sistema')) else None
+            pecas_insert = []
+            for _, row in df.iterrows():
+                chamado_num = str(row['chamado']).strip()
+                sub = str(row.get('subgrupo', ''))[:255] if pd.notna(row.get('subgrupo')) else ''
+                
+                # Só insere se não existir essa mesma peça para esse mesmo chamado
+                if (chamado_num, sub) not in pecas_existentes:
+                    pecas_existentes.add((chamado_num, sub))
+                    
+                    # Converte a data FT
+                    val_ft = row.get('ft')
+                    ft_date = None
+                    if pd.notna(val_ft) and str(val_ft).strip():
+                        try:
+                            parsed_date = pd.to_datetime(val_ft, dayfirst=False) if not isinstance(val_ft, datetime) else val_ft
+                            if pd.notna(parsed_date):
+                                ft_date = parsed_date
+                        except Exception as e:
+                            print(f"Aviso: Falha ao converter data '{val_ft}': {e}")
+                            pass
+                            
+                    pecas_insert.append({
+                        'chamado': chamado_num,
+                        'ct': str(row.get('ct', ''))[:255] if pd.notna(row.get('ct')) else None,
+                        'atp': str(row.get('atp', ''))[:255] if pd.notna(row.get('atp')) else None,
+                        'ft': ft_date,
+                        'segmento': str(row.get('segmento', ''))[:255] if pd.notna(row.get('segmento')) else None,
+                        'projeto': str(row.get('projeto', ''))[:255] if pd.notna(row.get('projeto')) else None,
+                        'equipamento': str(row.get('equipamento', ''))[:255] if pd.notna(row.get('equipamento')) else None,
+                        'sintoma': str(row.get('sintoma', '')) if pd.notna(row.get('sintoma')) else None,
+                        'tecnico_nome': str(row.get('tecnico_nome', ''))[:255] if pd.notna(row.get('tecnico_nome')) else None,
+                        'subgrupo': sub if sub != '' else None,
+                        'acao': str(row.get('acao', ''))[:255] if pd.notna(row.get('acao')) else None
+                    })
 
-            chamados_insert.append({
-                'numero': chamado_num,
-                'id_tecnico': id_tec,
-                'ct_base': ct_base[:20] if ct_base else None,
-                'abertura': abertura,
-                'encerramento': encerramento,
-                'segmento': str(row.get('Segmento'))[:50] if pd.notna(row.get('Segmento')) else None,
-                'equip': str(row.get('Equipamento'))[:50] if pd.notna(row.get('Equipamento')) else None,
-                'proj': str(row.get('Projeto'))[:50] if pd.notna(row.get('Projeto')) else None,
-                'status': str(row.get('SLA_status'))[:20] if pd.notna(row.get('SLA_status')) else None,
-                'ta_min': minutos,
-                'classificacao': str(row.get('Classifica_chamado'))[:100] if pd.notna(row.get('Classifica_chamado')) else None
-            })
+            for i in range(0, len(pecas_insert), 1000):
+                chunk = pecas_insert[i:i+1000]
+                current_progress = int((i / total_rows) * 100)
+                task_progress[task_id] = {
+                    "status": "processing", 
+                    "progress": current_progress, 
+                    "message": f"Banco: inserindo lote {min(i+1000, total_rows)}/{total_rows}"
+                }
+                conn.execute(text("""
+                    INSERT INTO tb_consumo_peca (chamado, ct, atp, ft, segmento, projeto, equipamento, sintoma, tecnico_nome, subgrupo, acao)
+                    VALUES (:chamado, :ct, :atp, :ft, :segmento, :projeto, :equipamento, :sintoma, :tecnico_nome, :subgrupo, :acao)
+                """), chunk)
+                
+        task_progress[task_id] = {"status": "completed", "progress": 100, "message": f"Sucesso! {total_rows} peças processadas."}
+    except Exception as e:
+        task_progress[task_id] = {"status": "error", "progress": 0, "message": str(e)}
 
-        # Insert batch ON CONFLICT DO NOTHING
-        for i in range(0, len(chamados_insert), 1000):
-            chunk = chamados_insert[i:i+1000]
-            conn.execute(text("""
-                INSERT INTO tb_chamado (numero_chamado, id_tecnico, ct_base, data_abertura, data_encerramento, 
-                segmento, equipamento, projeto, status_sla, tempo_atendimento_min, classificacao_chamado) 
-                VALUES (:numero, :id_tecnico, :ct_base, :abertura, :encerramento, :segmento, :equip, :proj, :status, :ta_min, :classificacao)
-                ON CONFLICT (numero_chamado) DO NOTHING
-            """), chunk)
-        conn.commit()
-    return {"message": f"Processados {len(df)} chamados da Base DL. Inserções apenas de novos."}
+def process_reincidencia(task_id: str, file_contents: bytes):
+    """
+    Processa registros de chamados reincidentes.
+    Lê uma planilha contendo as 26 colunas exatas de reincidência,
+    mapeia de forma case-insensitive e insere os dados no banco.
+    """
+    try:
+        task_progress[task_id] = {"status": "processing", "progress": 0, "message": "Lendo planilha de Reincidência..."}
+        df = pd.read_excel(io.BytesIO(file_contents))
+        
+        # Limpa os nomes das colunas e força tudo para minúsculo (Case Insensitive)
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Flexibilidade: Identifica a coluna que representa o Chamado Novo (RRC)
+        possiveis_nomes_rrc = ['chamado_rrc', 'chamado_novo', 'chamado novo', 'chamado']
+        col_chamado_rrc = next((col for col in possiveis_nomes_rrc if col in df.columns), None)
+        
+        if not col_chamado_rrc:
+            raise KeyError("A planilha não contém a coluna 'chamado_rrc' ou equivalente.")
+            
+        df = df.dropna(subset=[col_chamado_rrc])
+        total_rows = len(df)
+        
+        with engine.begin() as conn:
+            # Lógica Incremental: Remove do banco APENAS os chamados que estão nesta planilha
+            chamados_na_planilha = []
+            for c in df[col_chamado_rrc].dropna():
+                try:
+                    chamados_na_planilha.append(int(c))
+                except:
+                    pass
+            
+            # Deleta em pequenos lotes para não estourar o limite da query
+            for i in range(0, len(chamados_na_planilha), 1000):
+                chunk_ids = tuple(chamados_na_planilha[i:i+1000])
+                if chunk_ids:
+                    conn.execute(text("DELETE FROM tb_reincidencia WHERE chamado_rrc IN :ids"), {"ids": chunk_ids})
+            
+            reinc_insert = []
+            for _, row in df.iterrows():
+                # Tenta extrair o número do chamado principal (RRC). Se falhar, pula a linha.
+                try:
+                    chamado_rrc_num = int(row[col_chamado_rrc])
+                except:
+                    continue
+                
+                # Helper interno para converter datas de forma segura e retornar None se for nulo ('NaT')
+                def get_date(col_name):
+                    val = row.get(col_name)
+                    return val if pd.notna(val) else None
 
-def process_parts(file_contents: bytes):
-    df = pd.read_excel(io.BytesIO(file_contents))
-    df = df.dropna(subset=['Chamado'])
-    
-    with engine.connect() as conn:
-        pecas_insert = []
-        for _, row in df.iterrows():
-            pecas_insert.append({
-                'chamado': int(row['Chamado']),
-                'codigo': str(row.get('Material', ''))[:50],
-                'desc': str(row.get('Material_descricao', ''))[:255] if pd.notna(row.get('Material_descricao')) else None,
-                'grupo': str(row.get('Grupo_mercadoria', 'OUTROS'))[:100] if pd.notna(row.get('Grupo_mercadoria')) else 'OUTROS',
-                'qtd': 1
-            })
+                # Trata o campo intervalo_dias que pode ser nulo ou string mal formatada
+                interval_val = row.get('intervalo_dias')
+                try:
+                    intervalo = int(interval_val) if pd.notna(interval_val) else None
+                except:
+                    intervalo = None
 
-        for i in range(0, len(pecas_insert), 1000):
-            chunk = pecas_insert[i:i+1000]
-            conn.execute(text("""
-                INSERT INTO tb_consumo_peca (numero_chamado, codigo_peca, descricao_peca, grupo_mercadoria, quantidade)
-                VALUES (:chamado, :codigo, :desc, :grupo, :qtd)
-                -- Considerando que pode não ter UNIQUE garantido de peça para o mesmo chamado sem um ID primario forte:
-                -- Usamos insert direto. Idealmente deveria ter constraint. Para evitar duplicação em execuções repetidas, 
-                -- o ideal seria ON CONFLICT se houvesse constraint. Vamos inserir normal.
-            """), chunk)
-        conn.commit()
-    return {"message": f"Processadas {len(df)} peças consumidas."}
+                # Extração dos 26 campos, buscando pelos nomes em minúsculo devido à padronização acima.
+                reinc_insert.append({
+                    'chamado_anterior': int(row['chamado_anterior']) if pd.notna(row.get('chamado_anterior')) else None,
+                    'ft_anterior': get_date('ft_anterior'),
+                    'intervalo_dias': intervalo,
+                    'chamado_rrc': chamado_rrc_num,
+                    'ft_rrc': get_date('ft_rrc'),
+                    'encerramento_rrc': get_date('encerramento_rrc'),
+                    'classificacao': str(row.get('classificacao', ''))[:150] if pd.notna(row.get('classificacao')) else None,
+                    'defeito_anterior': str(row.get('defeito_anterior', ''))[:255] if pd.notna(row.get('defeito_anterior')) else None,
+                    'aplicado_peca_anterior': str(row.get('aplicado_peca_anterior', ''))[:255] if pd.notna(row.get('aplicado_peca_anterior')) else None,
+                    'segmento_rrc': str(row.get('segmento_rrc', ''))[:100] if pd.notna(row.get('segmento_rrc')) else None,
+                    'ct_rrc': str(row.get('ct_rrc', ''))[:100] if pd.notna(row.get('ct_rrc')) else None,
+                    'ct_anterior': str(row.get('ct_anterior', ''))[:100] if pd.notna(row.get('ct_anterior')) else None,
+                    'material_descricao_rrc': str(row.get('material_descricao_rrc', ''))[:255] if pd.notna(row.get('material_descricao_rrc')) else None,
+                    'equipamento': str(row.get('equipamento', ''))[:150] if pd.notna(row.get('equipamento')) else None,
+                    'projeto_anterior': str(row.get('projeto_anterior', ''))[:150] if pd.notna(row.get('projeto_anterior')) else None,
+                    'tecnico_nome_rrc': str(row.get('tecnico_nome_rrc', ''))[:150] if pd.notna(row.get('tecnico_nome_rrc')) else None,
+                    'tecnico_nome_anterior': str(row.get('tecnico_nome_anterior', ''))[:150] if pd.notna(row.get('tecnico_nome_anterior')) else None,
+                    'texto_encerrado_rrc': str(row.get('texto_encerrado_rrc', '')) if pd.notna(row.get('texto_encerrado_rrc')) else None,
+                    'motivo_class': str(row.get('motivo_class', ''))[:150] if pd.notna(row.get('motivo_class')) else None,
+                    'sub_class': str(row.get('sub_class', ''))[:150] if pd.notna(row.get('sub_class')) else None,
+                    'mesmo_motivo': str(row.get('mesmo_motivo', ''))[:150] if pd.notna(row.get('mesmo_motivo')) else None,
+                    'peca': str(row.get('peca', ''))[:150] if pd.notna(row.get('peca')) else None,
+                    'porque_nao_evitamos': str(row.get('porque_não_evitamos', '')) if pd.notna(row.get('porque_não_evitamos')) else None
+                })
 
-def process_reincidencia(file_contents: bytes):
-    df = pd.read_excel(io.BytesIO(file_contents))
-    df = df.dropna(subset=['Chamado_Novo'])
-    
-    with engine.connect() as conn:
-        reinc_insert = []
-        for _, row in df.iterrows():
-            reinc_insert.append({
-                'chamado_novo': int(row['Chamado_Novo']),
-                'motivo': str(row.get('Motivo', 'Reincidência registrada na planilha'))[:150]
-            })
+            # Realiza a inserção dos dados convertidos na tabela tb_reincidencia em pequenos lotes (1000)
+            for i in range(0, len(reinc_insert), 1000):
+                chunk = reinc_insert[i:i+1000]
+                current_progress = int((i / total_rows) * 100)
+                task_progress[task_id] = {
+                    "status": "processing", 
+                    "progress": current_progress, 
+                    "message": f"Banco: inserindo lote {min(i+1000, total_rows)}/{total_rows}"
+                }
+                conn.execute(text("""
+                    INSERT INTO tb_reincidencia (
+                        chamado_anterior, ft_anterior, intervalo_dias, chamado_rrc, ft_rrc, encerramento_rrc, classificacao, 
+                        defeito_anterior, aplicado_peca_anterior,
+                        segmento_rrc, ct_rrc, ct_anterior,
+                        material_descricao_rrc, equipamento, projeto_anterior, tecnico_nome_rrc,
+                        tecnico_nome_anterior, texto_encerrado_rrc, motivo_class, sub_class,
+                        mesmo_motivo, peca, porque_nao_evitamos
+                    ) VALUES (
+                        :chamado_anterior, :ft_anterior, :intervalo_dias, :chamado_rrc, :ft_rrc, :encerramento_rrc, :classificacao,
+                        :defeito_anterior, :aplicado_peca_anterior,
+                        :segmento_rrc, :ct_rrc, :ct_anterior,
+                        :material_descricao_rrc, :equipamento, :projeto_anterior, :tecnico_nome_rrc,
+                        :tecnico_nome_anterior, :texto_encerrado_rrc, :motivo_class, :sub_class,
+                        :mesmo_motivo, :peca, :porque_nao_evitamos
+                    )
+                """), chunk)
 
-        for i in range(0, len(reinc_insert), 1000):
-            chunk = reinc_insert[i:i+1000]
-            conn.execute(text("""
-                INSERT INTO tb_reincidencia (chamado_novo, motivo_classificacao)
-                VALUES (:chamado_novo, :motivo)
-                ON CONFLICT (chamado_novo) DO NOTHING
-            """), chunk)
-        conn.commit()
-    return {"message": f"Processados {len(df)} registros de reincidência."}
+                
+        task_progress[task_id] = {"status": "completed", "progress": 100, "message": f"Sucesso! {total_rows} reincidências processadas com 26 colunas."}
+    except Exception as e:
+        task_progress[task_id] = {"status": "error", "progress": 0, "message": str(e)}
 
-def process_encerrados_rrc(file_contents: bytes):
-    df = pd.read_excel(io.BytesIO(file_contents))
-    df = df.dropna(subset=['Chamado'])
-    
-    with engine.connect() as conn:
-        enc_insert = []
-        for _, row in df.iterrows():
-            enc_insert.append({
-                'chamado': int(row['Chamado']),
-                'tecnico': str(row.get('Tecnico_nome', ''))[:150],
-                'projeto': str(row.get('Projeto', ''))[:50]
-            })
+def process_encerrados_rrc(task_id: str, file_contents: bytes):
+    """Processa chamados de projetos especiais que compõem estatística e descontam pontos da equipe."""
+    try:
+        task_progress[task_id] = {"status": "processing", "progress": 0, "message": "Lendo planilha de Encerrados RRC..."}
+        df = pd.read_excel(io.BytesIO(file_contents))
+        
+        # Converte as colunas para minúsculo para evitar erros de digitação (Case Insensitive)
+        import unicodedata
+        def normalize_col(c):
+            # Remove acentos e converte para minúsculo com underscore
+            s = unicodedata.normalize('NFKD', str(c)).encode('ASCII', 'ignore').decode('utf-8')
+            return s.strip().lower().replace(' ', '_')
+            
+        df.columns = [normalize_col(c) for c in df.columns]
 
-        for i in range(0, len(enc_insert), 1000):
-            chunk = enc_insert[i:i+1000]
-            conn.execute(text("""
-                INSERT INTO tb_reincidencia_encerrados (numero_chamado, tecnico_nome, projeto)
-                VALUES (:chamado, :tecnico, :projeto)
-                ON CONFLICT (numero_chamado) DO NOTHING
-            """), chunk)
-        conn.commit()
-    return {"message": f"Processados {len(df)} registros de Encerrados RRC."}
+        # PROTEÇÃO: Verifica se o usuário subiu a planilha de Reincidência no lugar errado
+        if any('chamado_rrc' in c or 'chamado_anterior' in c for c in df.columns):
+            raise ValueError("ATENÇÃO: Você anexou a planilha de 'Reincidências' no campo de 'Encerrados RRC'! Por favor, verifique o arquivo e selecione a planilha base de Encerrados.")
+        
+        # Mapeamento estrito: Não vamos renomear colunas ou tentar adivinhar nomes.
+        # A planilha DEVE conter exatamente as colunas definidas no padrão.
+                    
+        colunas_esperadas = ['chamado', 'segmento', 'projeto', 'assistencia_codigo', 'assistencia_nome', 'ft', 'tecnico_nome', 'texto_encerrado']
+        colunas_faltantes = [c for c in colunas_esperadas if c not in df.columns]
+        if colunas_faltantes:
+            raise KeyError(f"Erro de Validação: As seguintes colunas NÃO foram encontradas na planilha: {colunas_faltantes}. As colunas que o sistema conseguiu ler foram: {list(df.columns)}. Por favor, ajuste o cabeçalho no Excel para que fique exatamente igual ao esperado.")
+            
+        df = df.dropna(subset=['chamado'])
+        total_rows = len(df)
+        
+        with engine.begin() as conn:
+            # Lógica Incremental: Remove do banco APENAS os chamados que estão nesta planilha
+            chamados_na_planilha = df['chamado'].dropna().astype(str).tolist()
+            
+            # Deleta em pequenos lotes para não estourar o limite da query
+            for i in range(0, len(chamados_na_planilha), 1000):
+                chunk_ids = tuple(chamados_na_planilha[i:i+1000])
+                if chunk_ids:
+                    conn.execute(text("DELETE FROM tb_reincidencia_encerrados WHERE chamado IN :ids"), {"ids": chunk_ids})
+            
+            enc_insert = []
+            for _, row in df.iterrows():
+                
+                # Tenta converter FT (com dayfirst=False para formato americano)
+                val_ft = row.get('ft')
+                ft_date = None
+                if pd.notna(val_ft) and str(val_ft).strip():
+                    try:
+                        parsed_date = pd.to_datetime(val_ft, dayfirst=False) if not isinstance(val_ft, datetime) else val_ft
+                        # Evita que NaT (Not a Time) do Pandas cause problemas no PostgreSQL
+                        if pd.notna(parsed_date):
+                            ft_date = parsed_date
+                    except Exception as e:
+                        print(f"Aviso: Falha ao converter data '{val_ft}': {e}")
+                        pass
+
+                enc_insert.append({
+                    'chamado': str(row['chamado']).strip(),
+                    'segmento': str(row.get('segmento', ''))[:150] if pd.notna(row.get('segmento')) else None,
+                    'projeto': str(row.get('projeto', ''))[:150] if pd.notna(row.get('projeto')) else None,
+                    'assistencia_codigo': str(row.get('assistencia_codigo', ''))[:100] if pd.notna(row.get('assistencia_codigo')) else None,
+                    'assistencia_nome': str(row.get('assistencia_nome', ''))[:255] if pd.notna(row.get('assistencia_nome')) else None,
+                    'ft': ft_date,
+                    'tecnico_nome': str(row.get('tecnico_nome', ''))[:255] if pd.notna(row.get('tecnico_nome')) else None,
+                    'texto_encerrado': str(row.get('texto_encerrado', '')) if pd.notna(row.get('texto_encerrado')) else None
+                })
+
+            for i in range(0, len(enc_insert), 1000):
+                chunk = enc_insert[i:i+1000]
+                current_progress = int((i / total_rows) * 100)
+                task_progress[task_id] = {
+                    "status": "processing", 
+                    "progress": current_progress, 
+                    "message": f"Banco: inserindo lote {min(i+1000, total_rows)}/{total_rows}"
+                }
+                conn.execute(text("""
+                    INSERT INTO tb_reincidencia_encerrados (
+                        chamado, segmento, projeto, assistencia_codigo, assistencia_nome, ft, tecnico_nome, texto_encerrado
+                    ) VALUES (
+                        :chamado, :segmento, :projeto, :assistencia_codigo, :assistencia_nome, :ft, :tecnico_nome, :texto_encerrado
+                    )
+                    ON CONFLICT (chamado) DO NOTHING
+                """), chunk)
+                
+        task_progress[task_id] = {"status": "completed", "progress": 100, "message": f"Sucesso! {total_rows} encerrados processados."}
+    except Exception as e:
+        task_progress[task_id] = {"status": "error", "progress": 0, "message": str(e)}
+
+# ==============================================================================
+# ENDPOINTS REST DA API
+# ==============================================================================
 
 @app.post("/api/ingestion/upload")
-async def upload_planilha(type: str, file: UploadFile = File(...)):
+async def upload_planilha(type: str, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Endpoint principal para recebimento de planilhas.
+    Recebe o arquivo via rede e delega o processamento demorado para uma BackgroundTask.
+    Retorna o task_id IMEDIATAMENTE para o frontend, impedindo Timeout no navegador.
+    """
     try:
+        # Carrega o arquivo para a memória do servidor
         contents = await file.read()
+        
+        # Cria um "Ticket" de acompanhamento único (UUID)
+        task_id = str(uuid.uuid4())
+        
+        # Estado inicial
+        task_progress[task_id] = {"status": "queued", "progress": 0, "message": "Enviado ao processamento..."}
+
+        # Despacha o worker correspondente para a trilha assíncrona
         if type == 'BaseDL':
-            return process_base_dl(contents)
+            background_tasks.add_task(process_base_dl, task_id, contents)
         elif type == 'Parts':
-            return process_parts(contents)
+            background_tasks.add_task(process_parts, task_id, contents)
         elif type == 'Reincidencia':
-            return process_reincidencia(contents)
+            background_tasks.add_task(process_reincidencia, task_id, contents)
         elif type == 'EncerradosRRC':
-            return process_encerrados_rrc(contents)
+            background_tasks.add_task(process_encerrados_rrc, task_id, contents)
         else:
             raise HTTPException(status_code=400, detail="Tipo de planilha inválido")
+            
+        # Responde pro Front (React) liberando a conexão HTTP principal
+        return {"task_id": task_id, "message": "Processamento iniciado em segundo plano."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/ingestion/progress/{task_id}")
+async def get_progress(task_id: str):
+    """
+    Endpoint de Polling.
+    O frontend vai pingar esta rota a cada 1 segundo (ex:) para saber
+    em que pé está o processamento no backend e atualizar a barra verde na interface.
+    """
+    if task_id not in task_progress:
+        raise HTTPException(status_code=404, detail="Task ID não encontrado.")
+    return task_progress[task_id]
+
 if __name__ == "__main__":
     import uvicorn
+    # Inicia o servidor Python FastAPI na porta 8001
     uvicorn.run(app, host="0.0.0.0", port=8001)

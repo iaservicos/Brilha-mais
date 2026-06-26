@@ -17,11 +17,11 @@ public class CalculoMetricasRepository {
 
         public BigDecimal calcularPercentualSlaEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " JOIN tb_base_atp b ON c.ct_base = b.ct_codigo " : " ";
+                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
                 StringBuilder sql = new StringBuilder(
-                                "SELECT count(c.numero_chamado) as total, COALESCE(sum(case when UPPER(TRIM(c.status_sla)) = 'DENTRO' then 1 else 0 end), 0) as dentro FROM tb_chamado c"
+                                "SELECT count(c.chamado) as total, COALESCE(sum(case when UPPER(TRIM(c.sla_status)) = 'DENTRO' then 1 else 0 end), 0) as dentro FROM tb_chamado c"
                                                 + join
-                                                + "WHERE c.data_encerramento >= ? AND c.data_encerramento < ? AND c.status_sla IS NOT NULL AND c.status_chamado IS NULL");
+                                                + "WHERE c.ft >= ? AND c.ft < ? AND c.sla_status IS NOT NULL");
 
                 Object[] args = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql, "c");
 
@@ -34,16 +34,16 @@ public class CalculoMetricasRepository {
 
         public BigDecimal calcularPercentualReincidenciaEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String joinQtd = useAtp ? " JOIN tb_base_atp b ON r.ct_anterior = b.ct_codigo " : " ";
+                String joinQtd = useAtp ? " LEFT JOIN tb_base_atp b ON r.ct_anterior = b.ct_codigo " : " ";
                 StringBuilder sql1 = new StringBuilder("SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r "
                                 +
                                 joinQtd +
-                                "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.meses_rrc <= 3");
+                                "WHERE r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90");
 
-                String joinBase = useAtp ? " JOIN tb_base_atp b ON c.ct_base = b.ct_codigo " : " ";
+                String joinBase = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_codigo = b.ct_codigo " : " ";
                 StringBuilder sql2 = new StringBuilder(
-                                "SELECT count(c.numero_chamado) as total FROM tb_reincidencia_encerrados c" + joinBase
-                                                + "WHERE c.data_encerramento >= ? AND c.data_encerramento < ?");
+                                "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c" + joinBase
+                                                + "WHERE c.ft >= ? AND c.ft < ?");
 
                 Object[] args1 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql1, "r",
                                 "ct_anterior",
@@ -62,16 +62,16 @@ public class CalculoMetricasRepository {
 
         public BigDecimal calcularPercentualPerdidosEquipe(boolean useAtp, String uf, String nomeAtp, int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " JOIN tb_base_atp b ON c.ct_base = b.ct_codigo " : " ";
-                String conditionPerdidos = " AND (c.pp = 1 OR c.classificacao_chamado IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO') OR c.encdesc IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO') OR c.ofensor IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO'))";
+                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
+                String conditionPerdidos = " AND UPPER(TRIM(c.classificacao_chamado)) IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO')";
 
-                StringBuilder sql1 = new StringBuilder("SELECT count(c.numero_chamado) as perdidos FROM tb_chamado c"
+                StringBuilder sql1 = new StringBuilder("SELECT count(c.chamado) as perdidos FROM tb_chamado c"
                                 + join
-                                + "WHERE c.data_encerramento >= ? AND c.data_encerramento < ? AND c.status_chamado IS NULL"
+                                + "WHERE c.ft >= ? AND c.ft < ?"
                                 + conditionPerdidos);
-                StringBuilder sql2 = new StringBuilder("SELECT count(c.numero_chamado) as total FROM tb_chamado c"
+                StringBuilder sql2 = new StringBuilder("SELECT count(c.chamado) as total FROM tb_chamado c"
                                 + join
-                                + "WHERE c.data_encerramento >= ? AND c.data_encerramento < ? AND c.status_chamado IS NULL");
+                                + "WHERE c.ft >= ? AND c.ft < ?");
 
                 Object[] args1 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql1, "c");
                 Object[] args2 = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql2, "c");
@@ -87,11 +87,11 @@ public class CalculoMetricasRepository {
 
         public Map<String, Object> buscarNps(boolean useAtp, String uf, String nomeAtp, int idTecnico, String ctBase,
                         LocalDate inicio, LocalDate fim) {
-                String join = useAtp ? " JOIN tb_base_atp b ON c.ct_base = b.ct_codigo " : " ";
+                String join = useAtp ? " LEFT JOIN tb_base_atp b ON c.assistencia_centro_trabalho = b.ct_codigo " : " ";
                 StringBuilder sql = new StringBuilder(
-                                "SELECT count(n.id_nps) as total, COALESCE(sum(case when n.classificacao = 'PROMOTOR' then 1 else 0 end), 0) as promotores, COALESCE(sum(case when n.classificacao = 'DETRATOR' then 1 else 0 end), 0) as detratores FROM tb_nps n JOIN tb_chamado c ON n.numero_chamado = c.numero_chamado "
+                                "SELECT count(n.id_nps) as total, COALESCE(sum(case when n.classificacao = 'PROMOTOR' then 1 else 0 end), 0) as promotores, COALESCE(sum(case when n.classificacao = 'DETRATOR' then 1 else 0 end), 0) as detratores FROM tb_nps n JOIN tb_chamado c ON n.numero_chamado = c.chamado "
                                                 + join
-                                                + "WHERE c.data_encerramento >= ? AND c.data_encerramento < ? AND c.status_chamado IS NULL");
+                                                + "WHERE c.ft >= ? AND c.ft < ?");
 
                 Object[] args = buildArgs(useAtp, uf, nomeAtp, idTecnico, ctBase, inicio, fim, sql, "c");
                 return jdbcTemplate.queryForMap(sql.toString(), args);
@@ -99,11 +99,11 @@ public class CalculoMetricasRepository {
 
         /**
          * Busca o total de chamados atendidos (O Divisor da Base DL).
-         * Regra de Negócio: Conta os chamados na Base DL, excluindo chamados "ORFAO" (status_chamado IS NOT NULL)
+         * Regra de Negócio: Conta os chamados na Base DL,
          * e ignorando chamados do projeto restrito 'H3-03535', para não prejudicar o percentual do técnico.
          */
         public long buscarTotalChamadosIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
-                String sql = "SELECT count(c.numero_chamado) as total FROM tb_chamado c WHERE c.id_tecnico = ? AND c.data_encerramento >= ? AND c.data_encerramento < ? AND c.status_chamado IS NULL AND c.projeto <> 'H3-03535'";
+                String sql = "SELECT count(c.chamado) as total FROM tb_chamado c WHERE c.id_tecnico = ? AND c.ft >= ? AND c.ft < ? AND c.projeto <> 'H3-03535'";
                 return ((Number) jdbcTemplate.queryForMap(sql, idTecnico, inicio, fim.plusDays(1)).getOrDefault("total",
                                 0))
                                 .longValue();
@@ -115,16 +115,16 @@ public class CalculoMetricasRepository {
          * Divisor (sql2): Volume total de chamados encerrados da base de reincidência.
          */
         public BigDecimal calcularPercentualReincidenciaIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
-                String sql1 = "SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r JOIN tb_tecnico t ON UPPER(TRIM(r.tecnico_anterior)) = UPPER(TRIM(t.nome_completo)) "
+                String sql1 = "SELECT count(r.id_reincidencia) as qtd FROM tb_reincidencia r JOIN tb_tecnico t ON UPPER(TRIM(r.tecnico_nome_anterior)) = UPPER(TRIM(t.nome_completo)) "
                                 +
-                                "WHERE t.id_tecnico = ? AND r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.meses_rrc <= 3";
+                                "WHERE t.id_tecnico = ? AND r.encerramento_rrc >= ? AND r.encerramento_rrc < ? AND r.intervalo_dias <= 90";
                 long qtd = ((Number) jdbcTemplate.queryForMap(sql1, idTecnico, inicio, fim.plusDays(1))
                                 .getOrDefault("qtd", 0))
                                 .longValue();
 
-                String sql2 = "SELECT count(c.numero_chamado) as total FROM tb_reincidencia_encerrados c " +
+                String sql2 = "SELECT count(c.chamado) as total FROM tb_reincidencia_encerrados c " +
                                 "JOIN tb_tecnico t ON UPPER(TRIM(c.tecnico_nome)) = UPPER(TRIM(t.nome_completo)) " +
-                                "WHERE t.id_tecnico = ? AND c.data_encerramento >= ? AND c.data_encerramento < ?";
+                                "WHERE t.id_tecnico = ? AND c.ft >= ? AND c.ft < ?";
                 long base = ((Number) jdbcTemplate.queryForMap(sql2, idTecnico, inicio, fim.plusDays(1)).getOrDefault(
                                 "total",
                                 0)).longValue();
@@ -133,29 +133,21 @@ public class CalculoMetricasRepository {
                                 : BigDecimal.ZERO;
         }
 
-        /**
-         * Calcula o percentual de uso de peças de um técnico (Numerador / Divisor).
-         * Divisor: O total legítimo de chamados atendidos no mês (buscarTotalChamadosIndividual).
-         * Numerador: A quantidade de chamados ÚNICOS (count distinct) onde foram utilizadas peças permitidas.
-         * Peças permitidas restritas estritamente aos grupos: 'HD', 'SSD', 'Tampa frontal/ LCD', 'Placa mãe'.
-         */
         public BigDecimal calcularPercentualPecasIndividual(int idTecnico, LocalDate inicio, LocalDate fim) {
                 long totalValido = buscarTotalChamadosIndividual(idTecnico, inicio, fim);
-
-                if (totalValido == 0)
-                        return BigDecimal.ZERO;
-
-                String sqlPecas = "SELECT count(DISTINCT p.numero_chamado) as qtd FROM tb_consumo_peca p JOIN tb_chamado c ON p.numero_chamado = c.numero_chamado "
-                                +
-                                "WHERE c.id_tecnico = ? AND c.data_encerramento >= ? AND c.data_encerramento < ? " +
-                                "AND p.subgrupo IN ('HD', 'SSD', 'Tampa frontal/ LCD', 'Placa mãe') " +
-                                "AND (p.projeto <> 'H3-03535')";
+                if (totalValido == 0) return BigDecimal.ZERO;
+                
+                String sqlPecas = "SELECT count(DISTINCT p.chamado) as qtd FROM tb_consumo_peca p JOIN tb_tecnico t ON UPPER(TRIM(p.tecnico_nome)) = UPPER(TRIM(t.nome_completo)) " +
+                                "WHERE t.id_tecnico = ? AND p.ft >= ? AND p.ft < ? " +
+                                "AND (UPPER(TRIM(p.subgrupo)) IN ('HD', 'HDD', 'SSD', 'TAMPA FRONTAL/ LCD') OR p.subgrupo ILIKE '%PLACA M%E%') " +
+                                "AND p.projeto <> 'H3-03535' " +
+                                "AND (p.acao IS NULL OR p.acao NOT ILIKE '%A009%')";
                 long qtd = ((Number) jdbcTemplate.queryForMap(sqlPecas, idTecnico, inicio, fim.plusDays(1))
-                                .getOrDefault("qtd",
-                                                0))
-                                .longValue();
-
-                return BigDecimal.valueOf(qtd).divide(BigDecimal.valueOf(totalValido), 4, RoundingMode.HALF_UP);
+                                .getOrDefault("qtd", 0)).longValue();
+                
+                BigDecimal result = BigDecimal.valueOf(qtd).divide(BigDecimal.valueOf(totalValido), 4, RoundingMode.HALF_UP);
+                System.out.println("DEBUG PEÇAS: id=" + idTecnico + " | inicio=" + inicio + " | fim=" + fim + " | qtd=" + qtd + " | total=" + totalValido + " | result=" + result);
+                return result;
         }
 
         private Object[] buildArgs(boolean useAtp, String uf, String nomeAtp, int idTecnico, String ctBase,

@@ -13,7 +13,7 @@ public interface TecnicoRepository extends JpaRepository<Tecnico, Integer> {
     Optional<Tecnico> findByMatricula(String matricula);
     Optional<Tecnico> findFirstByNomeCompletoContainingIgnoreCaseAndCtBaseIgnoreCase(String nomeCompleto, String ctBase);
 
-    @Query(value = "SELECT t.* FROM tb_tecnico t JOIN tb_base_atp b ON t.ct_base = b.ct_codigo WHERE t.nome_completo ILIKE concat('%', :nome, '%') AND b.uf ILIKE :estado LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT t.* FROM tb_tecnico t LEFT JOIN tb_base_atp b ON t.ct_base = b.ct_codigo WHERE t.nome_completo ILIKE concat('%', :nome, '%') AND (b.uf ILIKE :estado OR b.uf IS NULL) LIMIT 1", nativeQuery = true)
     Optional<Tecnico> findByNomeAndEstadoNative(@Param("nome") String nome, @Param("estado") String estado);
 
     @Query(value = "SELECT CASE WHEN b.cidade IS NOT NULL AND b.cidade <> '' THEN concat(initcap(b.cidade), ' - ', upper(b.uf)) ELSE upper(b.uf) END FROM tb_base_atp b WHERE b.ct_codigo = :ctBase LIMIT 1", nativeQuery = true)
