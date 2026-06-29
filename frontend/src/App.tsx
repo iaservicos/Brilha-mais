@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import AppRoutes from './navigation/AppRoutes';
 import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   const { theme, initializeTheme } = useThemeStore();
@@ -43,6 +44,7 @@ export default function App() {
         Aqui no App.tsx ficam apenas os Providers globais da aplicação.
         Ex: BrowserRouter, AuthProvider, QueryClientProvider, ThemeProvider.
       */}
+      <Toaster position="bottom-right" />
       <AppRoutes />
     </BrowserRouter>
   );

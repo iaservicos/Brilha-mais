@@ -3,6 +3,7 @@ import { Award, TrendingUp, AlertCircle, UserCheck, CheckCircle2, Medal, Chevron
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 import { CircularProgress } from '../components/ui/CircularProgress';
 import { ChamadoItem } from '../components/dashboard/ChamadoItem';
@@ -53,10 +54,13 @@ export default function DashboardScreen() {
 
         // 2. Dispara recálculo silencioso no background
         if (user?.matricula) {
-          api.post(`/dashboard/calcular-tecnico?matricula=${user.matricula}`)
+          api.post(`/dashboard/calcular-tecnico?matricula=${user.matricula}`, {}, { timeout: 120000 })
             .then(async () => {
               const freshResponse = await api.get('/dashboard/ranking');
-              if (mounted) applyData(freshResponse.data);
+              if (mounted) {
+                applyData(freshResponse.data);
+                toast.success('Pontuação atualizada com sucesso!');
+              }
             })
             .catch(e => console.error('Erro no recálculo em background:', e));
         }
