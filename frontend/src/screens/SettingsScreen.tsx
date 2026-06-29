@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Users, DatabaseZap } from 'lucide-react';
+import TecnicosManager from '../components/settings/TecnicosManager';
+import CampaignManager from '../components/settings/CampaignManager';
 
 type SpreadSheetType = 'BaseDL' | 'Parts' | 'Reincidencia' | 'EncerradosRRC';
+type TabType = 'UPLOADS' | 'TECNICOS' | 'CAMPANHA';
 
 interface UploadCardProps {
   type: SpreadSheetType;
@@ -82,6 +85,7 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
 };
 
 export default function SettingsScreen() {
+  const [activeTab, setActiveTab] = useState<TabType>('UPLOADS');
   const [uploadStatus, setUploadStatus] = useState<Record<SpreadSheetType, { status: 'idle' | 'uploading' | 'success' | 'error', message?: string, progress?: number }>>({
     BaseDL: { status: 'idle', progress: 0 },
     Parts: { status: 'idle', progress: 0 },
@@ -171,55 +175,103 @@ export default function SettingsScreen() {
         <h1 className="text-3xl md:text-4xl font-black text-text-main mb-2 tracking-tight">
           Painel do <span className="text-accent-teal">Moderador</span>
         </h1>
-        <p className="text-text-muted text-sm md:text-base max-w-2xl">
-          Gerencie a base de dados do sistema Brilha+. Faça o upload das planilhas mensais. O sistema está configurado com <strong>Ingestão Incremental</strong>: os chamados novos serão adicionados e os antigos preservados, sem duplicatas.
+        <p className="text-text-muted text-sm md:text-base max-w-2xl mb-8">
+          Gerencie a base de dados do sistema Brilha+, atualize as equipes e inicie novos ciclos de campanha mensais.
         </p>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveTab('UPLOADS')}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'UPLOADS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+          >
+            <UploadCloud size={20} />
+            Ingestão de Dados
+          </button>
+          <button
+            onClick={() => setActiveTab('TECNICOS')}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'TECNICOS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+          >
+            <Users size={20} />
+            Gestão de Técnicos
+          </button>
+          <button
+            onClick={() => setActiveTab('CAMPANHA')}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'CAMPANHA' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+          >
+            <DatabaseZap size={20} />
+            Campanha Ativa
+          </button>
+        </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
-          <UploadCloud className="text-accent-teal" size={24} />
-          Ingestão de Dados
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <UploadCard 
-            type="BaseDL"
-            title="Base DL (SLA)"
-            description="Planilha principal contendo todos os chamados da base DL e indicadores de SLA (IND_SLA_GERAL_GOV_CORP)."
-            status={uploadStatus.BaseDL.status}
-            message={uploadStatus.BaseDL.message}
-            progress={uploadStatus.BaseDL.progress}
-            onUpload={handleUpload}
-          />
-          <UploadCard 
-            type="Parts"
-            title="Consumo de Peças"
-            description="Planilha contendo o detalhamento de peças aplicadas por chamado."
-            status={uploadStatus.Parts.status}
-            message={uploadStatus.Parts.message}
-            progress={uploadStatus.Parts.progress}
-            onUpload={handleUpload}
-          />
-          <UploadCard 
-            type="Reincidencia"
-            title="Reincidências (RRC)"
-            description="Planilha contendo os apontamentos de chamados reincidentes (voltas)."
-            status={uploadStatus.Reincidencia.status}
-            message={uploadStatus.Reincidencia.message}
-            progress={uploadStatus.Reincidencia.progress}
-            onUpload={handleUpload}
-          />
-          <UploadCard 
-            type="EncerradosRRC"
-            title="Encerrados RRC"
-            description="Planilha base de encerrados, utilizada como divisor (base) para o cálculo percentual de reincidência."
-            status={uploadStatus.EncerradosRRC.status}
-            message={uploadStatus.EncerradosRRC.message}
-            progress={uploadStatus.EncerradosRRC.progress}
-            onUpload={handleUpload}
-          />
-        </div>
+      <div className="pt-2">
+        {activeTab === 'UPLOADS' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
+              <UploadCloud className="text-accent-teal" size={24} />
+              Ingestão Dinâmica de Planilhas
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <UploadCard 
+                type="BaseDL"
+                title="Base DL (SLA)"
+                description="Planilha principal contendo todos os chamados da base DL e indicadores de SLA (IND_SLA_GERAL_GOV_CORP)."
+                status={uploadStatus.BaseDL.status}
+                message={uploadStatus.BaseDL.message}
+                progress={uploadStatus.BaseDL.progress}
+                onUpload={handleUpload}
+              />
+              <UploadCard 
+                type="Parts"
+                title="Consumo de Peças"
+                description="Planilha contendo o detalhamento de peças aplicadas por chamado."
+                status={uploadStatus.Parts.status}
+                message={uploadStatus.Parts.message}
+                progress={uploadStatus.Parts.progress}
+                onUpload={handleUpload}
+              />
+              <UploadCard 
+                type="Reincidencia"
+                title="Reincidências (RRC)"
+                description="Planilha contendo os apontamentos de chamados reincidentes (voltas)."
+                status={uploadStatus.Reincidencia.status}
+                message={uploadStatus.Reincidencia.message}
+                progress={uploadStatus.Reincidencia.progress}
+                onUpload={handleUpload}
+              />
+              <UploadCard 
+                type="EncerradosRRC"
+                title="Encerrados RRC"
+                description="Planilha base de encerrados, utilizada como divisor (base) para o cálculo percentual de reincidência."
+                status={uploadStatus.EncerradosRRC.status}
+                message={uploadStatus.EncerradosRRC.message}
+                progress={uploadStatus.EncerradosRRC.progress}
+                onUpload={handleUpload}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'TECNICOS' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+             <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
+              <Users className="text-accent-teal" size={24} />
+              Gestão de Técnicos
+            </h2>
+            <TecnicosManager />
+          </div>
+        )}
+
+        {activeTab === 'CAMPANHA' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-3xl">
+             <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
+              <DatabaseZap className="text-accent-teal" size={24} />
+              Gestão da Campanha Atual
+            </h2>
+            <CampaignManager />
+          </div>
+        )}
       </div>
     </div>
   );

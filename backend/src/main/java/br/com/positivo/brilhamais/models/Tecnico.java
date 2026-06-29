@@ -37,16 +37,20 @@ public class Tecnico implements UserDetails {
     @Column(name = "cargo")
     private String cargo;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "senha")
     private String senha;
 
+    @Builder.Default
     @Column(name = "ativo")
     private Boolean ativo = true;
 
+    @Builder.Default
     @Column(name = "is_primeiro_acesso")
     private Boolean isPrimeiroAcesso = true;
 
 
+    @Builder.Default
     @Column(name = "role", length = 20)
     private String role = "PADRAO";
 

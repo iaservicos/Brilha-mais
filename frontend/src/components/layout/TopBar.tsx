@@ -157,7 +157,7 @@ export default function TopBar() {
                   className="flex items-center w-full px-4 py-2 text-sm text-light-text-secondary dark:text-text-main bg-transparent hover:text-[#0891b2] dark:hover:text-[#0891b2] transition-colors duration-200"
                 >
                   <Settings size={16} className="mr-2" />
-                  Painel de Ingestão
+                  Painel do Moderador
                 </button>
               )}
 

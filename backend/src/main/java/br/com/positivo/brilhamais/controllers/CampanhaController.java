@@ -5,6 +5,7 @@ import br.com.positivo.brilhamais.repositories.CampanhaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDate;
 
 @RestController
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 public class CampanhaController {
 
     private final CampanhaRepository campanhaRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @GetMapping("/ativa")
     public ResponseEntity<Campanha> getCampanhaAtiva() {
@@ -32,4 +34,27 @@ public class CampanhaController {
         
         return ResponseEntity.ok(campanhaRepository.save(campanha));
     }
+
+    @PostMapping("/nova-campanha")
+    public ResponseEntity<Campanha> criarNovaCampanha(@RequestBody NovaCampanhaRequest request) {
+        if (request.getLimparDadosBrutos() != null && request.getLimparDadosBrutos()) {
+            // Usa o JdbcTemplate para limpar os dados
+            jdbcTemplate.execute("TRUNCATE TABLE tb_chamado, tb_consumo_peca, tb_reincidencia CASCADE");
+        }
+
+        Campanha campanha = Campanha.builder()
+                .dataInicio(request.getDataInicio())
+                .dataFim(request.getDataFim())
+                .ativa(true)
+                .build();
+        
+        return ResponseEntity.ok(campanhaRepository.save(campanha));
+    }
+}
+
+@lombok.Data
+class NovaCampanhaRequest {
+    private LocalDate dataInicio;
+    private LocalDate dataFim;
+    private Boolean limparDadosBrutos;
 }

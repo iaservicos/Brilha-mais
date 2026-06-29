@@ -29,6 +29,10 @@ public class ApuracaoMensal {
     @Column(name = "atingimento_sla")
     private BigDecimal atingimentoSla;
 
+    @Builder.Default
+    @Column(name = "concluido")
+    private Boolean concluido = false;
+
     @Column(name = "pontos_sla")
     private Double pontosSla;
 
