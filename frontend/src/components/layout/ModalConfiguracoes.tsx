@@ -53,11 +53,18 @@ export default function ModalConfiguracoes({ isOpen, onClose }: ModalConfiguraco
     setImgMensagem({ tipo: '', texto: '' });
     try {
       await api.put(`/foto-perfil/${user?.matricula}`, { foto: previewImagem });
-      await updateUser({ fotoPerfil: previewImagem });
+      // Persiste apenas o marcador no store — nunca o base64 (evita estourar o localStorage)
+      // O base64 fica em memória no previewImagem para exibição imediata
+      await updateUser({ fotoPerfil: '__HAS_FOTO__' });
       setImgMensagem({ tipo: 'sucesso', texto: 'Foto de perfil atualizada!' });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setImgMensagem({ tipo: 'erro', texto: 'Falha ao salvar a foto. Tente novamente.' });
+      const status = error?.response?.status;
+      const msg =
+        status === 413
+          ? 'Imagem muito grande. Use uma imagem com no máximo 5MB.'
+          : 'Falha ao salvar a foto. Tente novamente.';
+      setImgMensagem({ tipo: 'erro', texto: msg });
     } finally {
       setLoadingImg(false);
     }

@@ -22,7 +22,6 @@ public class FotoPerfil {
     @JoinColumn(name = "id_tecnico", nullable = false, unique = true)
     private Tecnico tecnico;
 
-    @Lob
-    @Column(name = "foto_base64", nullable = false)
+    @Column(name = "foto_base64", nullable = false, columnDefinition = "TEXT")
     private String fotoBase64;
 }

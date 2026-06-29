@@ -41,14 +41,18 @@ export default function TopBar() {
   // Buscar foto de perfil ao montar
   useEffect(() => {
     const fetchFoto = async () => {
-      if (user?.matricula && !user.fotoPerfil) {
+      // Busca se não tiver foto em memória ou se só tiver o marcador (foto está no servidor)
+      if (user?.matricula && (!user.fotoPerfil || user.fotoPerfil === '__HAS_FOTO__')) {
         try {
           const res = await api.get(`/foto-perfil/${user.matricula}`);
-          if (res.data.foto) {
-            useAuthStore.getState().updateUser({ fotoPerfil: res.data.foto });
-          }
-        } catch (error) {
+          useAuthStore.setState((state) => ({
+            user: state.user ? { ...state.user, fotoPerfil: res.data.foto || undefined } : null,
+          }));
+        } catch {
           console.log('Sem foto de perfil ou erro ao buscar.');
+          useAuthStore.setState((state) => ({
+            user: state.user ? { ...state.user, fotoPerfil: undefined } : null,
+          }));
         }
       }
     };

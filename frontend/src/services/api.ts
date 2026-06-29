@@ -35,13 +35,34 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor genérico para logging de respostas
+// Interceptor de resposta: trata expiração de sessão automaticamente
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      console.warn('Acesso não autorizado. Sessão possivelmente expirada.');
+  async (error) => {
+    const status = error.response?.status;
+    const requestUrl: string = error.config?.url ?? '';
+
+    // Evita loop infinito em rotas públicas de autenticação
+    const isPublicRoute = requestUrl.includes('/auth/');
+
+    // 401 = token expirado ou ausente → logout automático
+    // 403 = autenticado, mas sem permissão para este recurso → NÃO faz logout
+    if (status === 401 && !isPublicRoute) {
+      try {
+        // Importação lazy para evitar dependência circular
+        const { useAuthStore } = await import('../store/authStore');
+        await useAuthStore.getState().logout();
+      } catch {
+        // Fallback: limpa manualmente se o store falhar
+        await SecureStore.deleteItemAsync('brilhamais_token');
+        await SecureStore.deleteItemAsync('brilhamais_user');
+      }
+      // Redireciona para login sem usar React Router (contexto pode não existir)
+      window.location.href = '/login';
     }
+
     return Promise.reject(error);
   }
 );
+
+

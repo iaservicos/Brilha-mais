@@ -7,8 +7,11 @@ import br.com.positivo.brilhamais.repositories.TecnicoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class FotoPerfilService {
 
     private final FotoPerfilRepository fotoPerfilRepository;

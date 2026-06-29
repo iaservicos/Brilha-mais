@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/foto-perfil")
+@RequestMapping("/api/v1/foto-perfil")
 @RequiredArgsConstructor
 public class FotoPerfilController {
 
