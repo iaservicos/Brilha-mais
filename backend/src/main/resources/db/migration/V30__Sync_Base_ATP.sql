@@ -23,7 +23,7 @@ ADD COLUMN IF NOT EXISTS cc_ct_cidade VARCHAR(255);
 -- 3. Atualização de restrições de chaves estrangeiras (Proteção de exclusão)
 -- Derrubamos as restrições antigas (RESTRICT)
 ALTER TABLE tb_tecnico DROP CONSTRAINT IF EXISTS tb_tecnico_ct_base_fkey;
-ALTER TABLE tb_chamado DROP CONSTRAINT IF EXISTS tb_chamado_assistencia_centro_trabalho_fkey;
+ALTER TABLE tb_chamado DROP CONSTRAINT IF EXISTS tb_chamado_ct_base_fkey;
 
 -- Recriamos com ON DELETE SET NULL
 ALTER TABLE tb_tecnico 
@@ -31,5 +31,5 @@ ADD CONSTRAINT tb_tecnico_ct_base_fkey
 FOREIGN KEY (ct_base) REFERENCES tb_base_atp(ct_codigo) ON DELETE SET NULL;
 
 ALTER TABLE tb_chamado 
-ADD CONSTRAINT tb_chamado_assistencia_centro_trabalho_fkey 
-FOREIGN KEY (assistencia_centro_trabalho) REFERENCES tb_base_atp(ct_codigo) ON DELETE SET NULL;
+ADD CONSTRAINT tb_chamado_ct_base_fkey 
+FOREIGN KEY (ct_base) REFERENCES tb_base_atp(ct_codigo) ON DELETE SET NULL;

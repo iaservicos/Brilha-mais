@@ -8,9 +8,9 @@ CREATE OR REPLACE VIEW vw_chamados_por_tecnico AS
 SELECT 
     t.nome_completo AS "Técnico",
     b.nome_atp AS "Base",
-    COUNT(c.chamado) AS "Total de Chamados",
-    MIN(c.ft) AS "Primeiro Chamado",
-    MAX(c.ft) AS "Último Chamado"
+    COUNT(c.numero_chamado) AS "Total de Chamados",
+    MIN(c.data_abertura) AS "Primeiro Chamado",
+    MAX(c.data_abertura) AS "Último Chamado"
 FROM tb_tecnico t
 JOIN tb_chamado c ON t.id_tecnico = c.id_tecnico
 LEFT JOIN tb_base_atp b ON t.ct_base = b.ct_codigo

@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 # Conexão com o banco (usando variável de ambiente ou default para local)
-DB_URL = "postgresql://postgres.scdkwhbvaiekcusayetn:Brilha_mais@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
+DB_URL = os.getenv('DATABASE_URL', "postgresql://postgres.eychznasujcjfdupizfm:Br%40sil%23%24%252026@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require")
 engine = create_engine(DB_URL)
 
 FILE_PATH = "c:/Users/marci/Documents/Positivo/brilha/Project_Docs/docs/BaseATP.xlsx"

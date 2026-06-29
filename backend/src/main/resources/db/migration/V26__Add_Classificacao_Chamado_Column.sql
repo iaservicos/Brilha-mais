@@ -1,2 +1,1 @@
-ALTER TABLE tb_chamado
-ADD COLUMN classificacao_chamado VARCHAR(255);
+-- A coluna classificacao_chamado já foi adicionada na V1 durante a recriação do banco.

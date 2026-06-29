@@ -99,7 +99,7 @@ export default function ModalConfiguracoes({ isOpen, onClose }: ModalConfiguraco
         }
       }
 
-      await api.put('/auth/change-password', {
+      await api.post('/auth/change-password', {
         matricula: matriculaAlvo,
         novaSenha: novaSenha
       });
