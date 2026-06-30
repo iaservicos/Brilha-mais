@@ -41,6 +41,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/v1/dashboard/calcular", "/api/v1/dashboard/calcular-tecnico").permitAll()
                 .anyRequest().authenticated()
             )
