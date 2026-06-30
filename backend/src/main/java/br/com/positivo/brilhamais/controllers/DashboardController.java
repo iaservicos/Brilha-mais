@@ -23,6 +23,14 @@ public class DashboardController {
     private final CampanhaRepository campanhaRepository;
     private final br.com.positivo.brilhamais.repositories.ApuracaoMensalRepository apuracaoRepository;
 
+    @GetMapping("/version")
+    public ResponseEntity<java.util.Map<String, String>> getVersion() {
+        java.util.Map<String, String> info = new java.util.HashMap<>();
+        info.put("version", "v3-historico-debug-500");
+        info.put("timestamp", java.time.LocalDateTime.now().toString());
+        return ResponseEntity.ok(info);
+    }
+
     @GetMapping("/ranking")
     public ResponseEntity<List<RankingDTO>> getRanking(
             @RequestParam(name = "mesAno", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate mesAno,
