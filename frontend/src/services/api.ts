@@ -20,7 +20,11 @@ api.interceptors.request.use(
     try {
       const token = await SecureStore.getItemAsync('brilhamais_token');
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        if (config.headers && typeof config.headers.set === 'function') {
+          config.headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
       }
     } catch (error) {
       console.error('Erro ao recuperar token do SecureStore', error);

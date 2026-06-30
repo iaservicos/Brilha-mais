@@ -2,8 +2,10 @@ import os
 import io
 import pandas as pd
 import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+import jwt
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
 from sqlalchemy import create_engine, text
 
@@ -18,6 +20,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==============================================================================
+# SEGURANÇA E AUTENTICAÇÃO (JWT)
+# ==============================================================================
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise HTTPException(status_code=500, detail="JWT_SECRET não configurado no servidor Python")
+    try:
+        # Decodifica e valida a assinatura gerada pelo Spring Boot (Java)
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Sua sessão expirou. Faça login novamente.")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token de segurança inválido ou corrompido.")
 
 # ==============================================================================
 # CONFIGURAÇÃO DO BANCO DE DADOS
@@ -436,7 +457,7 @@ def process_encerrados_rrc(task_id: str, file_contents: bytes):
 # ==============================================================================
 
 @app.post("/api/ingestion/upload")
-async def upload_planilha(type: str, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_planilha(type: str, background_tasks: BackgroundTasks, file: UploadFile = File(...), token_payload: dict = Depends(verify_token)):
     """
     Endpoint principal para recebimento de planilhas.
     Recebe o arquivo via rede e delega o processamento demorado para uma BackgroundTask.

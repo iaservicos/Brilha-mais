@@ -3,6 +3,7 @@ import axios from 'axios';
 import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Users, DatabaseZap } from 'lucide-react';
 import TecnicosManager from '../components/settings/TecnicosManager';
 import CampaignManager from '../components/settings/CampaignManager';
+import { useAuthStore } from '../store/authStore';
 
 type SpreadSheetType = 'BaseDL' | 'Parts' | 'Reincidencia' | 'EncerradosRRC';
 type TabType = 'UPLOADS' | 'TECNICOS' | 'CAMPANHA';
@@ -85,6 +86,7 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
 };
 
 export default function SettingsScreen() {
+  const { token } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('UPLOADS');
   const [uploadStatus, setUploadStatus] = useState<Record<SpreadSheetType, { status: 'idle' | 'uploading' | 'success' | 'error', message?: string, progress?: number }>>({
     BaseDL: { status: 'idle', progress: 0 },
@@ -104,7 +106,8 @@ export default function SettingsScreen() {
       
       const response = await axios.post(`${baseURL}/api/ingestion/upload?type=${type}`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
         },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
