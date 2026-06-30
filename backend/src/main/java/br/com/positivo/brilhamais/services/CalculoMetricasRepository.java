@@ -53,7 +53,7 @@ public class CalculoMetricasRepository {
 
         public BigDecimal calcularPercentualPerdidosEquipe(int idTecnico,
                         String ctBase, LocalDate inicio, LocalDate fim) {
-                String conditionPerdidos = " AND UPPER(TRIM(c.classificacao_chamado)) IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO')";
+                String conditionPerdidos = " AND UPPER(TRIM(c.classifica_chamado)) IN ('TRANSFERENCIA ENTRE BASES', 'PERFORMANCE FALHA GESTAO')";
 
                 StringBuilder sql1 = new StringBuilder("SELECT count(c.chamado) as perdidos FROM tb_chamado c "
                                 + "WHERE c.ft >= ? AND c.ft < ?"
