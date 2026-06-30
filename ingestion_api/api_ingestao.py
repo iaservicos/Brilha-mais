@@ -159,23 +159,25 @@ def process_base_dl(task_id: str, file_contents: bytes):
                     "message": f"Banco: inserindo lote {min(i+1000, total_rows)}/{total_rows}"
                 }
                 
-                # Ingestão Incremental: Se o chamado já existir, ele é ignorado (DO NOTHING)
+                # Ingestão Incremental: Se o chamado já existir, ele é atualizado
                 conn.execute(text("""
-                    INSERT INTO tb_chamado (numero_chamado, projeto, data_abertura, status_sla, equipamento, material_descricao, comercial, 
-                    ct_base, texto_encerrado, reincidente, classificacao_chamado, id_tecnico) 
+                    INSERT INTO tb_chamado (chamado, projeto, ft, sla_status, equipamento, material_descricao, comercial, 
+                    assistencia_centro_trabalho, assistencia_nome, tecnico_nome, texto_encerrado, reincidente, classificacao_chamado, id_tecnico) 
                     VALUES (:chamado, :projeto, :ft, :sla_status, :equipamento, :material_descricao, :comercial, 
-                    :assistencia_centro_trabalho, :texto_encerrado, :reincidente, :classificacao_chamado, :id_tecnico)
-                    ON CONFLICT (numero_chamado) DO UPDATE SET 
+                    :assistencia_centro_trabalho, :assistencia_nome, :tecnico_nome, :texto_encerrado, :reincidente, :classificacao_chamado, :id_tecnico)
+                    ON CONFLICT (chamado) DO UPDATE SET 
                     projeto = EXCLUDED.projeto, 
-                    data_abertura = EXCLUDED.data_abertura, 
-                    status_sla = EXCLUDED.status_sla, 
+                    ft = EXCLUDED.ft, 
+                    sla_status = EXCLUDED.sla_status, 
                     equipamento = EXCLUDED.equipamento, 
                     material_descricao = EXCLUDED.material_descricao, 
                     comercial = EXCLUDED.comercial, 
-                    ct_base = EXCLUDED.ct_base, 
+                    assistencia_centro_trabalho = EXCLUDED.assistencia_centro_trabalho, 
+                    assistencia_nome = EXCLUDED.assistencia_nome, 
+                    tecnico_nome = EXCLUDED.tecnico_nome, 
                     texto_encerrado = EXCLUDED.texto_encerrado, 
                     reincidente = EXCLUDED.reincidente, 
-                    classificacao_chamado = EXCLUDED.classificacao_chamado,
+                    classificacao_chamado = EXCLUDED.classificacao_chamado, 
                     id_tecnico = EXCLUDED.id_tecnico
                 """), chunk)
                 conn.commit()

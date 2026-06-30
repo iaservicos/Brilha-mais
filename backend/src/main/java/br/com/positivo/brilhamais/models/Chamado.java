@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class Chamado {
 
     @Id
-    @Column(name = "numero_chamado")
+    @Column(name = "chamado")
     private Long numeroChamado;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,10 +24,10 @@ public class Chamado {
     @Column(name = "projeto")
     private String projeto;
 
-    @Column(name = "data_abertura")
+    @Column(name = "ft")
     private LocalDateTime dataFt;
 
-    @Column(name = "status_sla")
+    @Column(name = "sla_status")
     private String statusSla;
 
     @Column(name = "equipamento")
@@ -39,13 +39,13 @@ public class Chamado {
     @Column(name = "comercial")
     private String comercial;
 
-    @Column(name = "ct_base")
+    @Column(name = "assistencia_centro_trabalho")
     private String ctBase;
 
-    @Transient
+    @Column(name = "assistencia_nome")
     private String assistenciaNome;
 
-    @Transient
+    @Column(name = "tecnico_nome")
     private String tecnicoNome;
 
     @Column(name = "classificacao_chamado")
