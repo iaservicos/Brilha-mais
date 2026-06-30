@@ -6,7 +6,7 @@ import { api } from '../services/api';
 import toast from 'react-hot-toast';
 
 import { CircularProgress } from '../components/ui/CircularProgress';
-import { ChamadoItem } from '../components/dashboard/ChamadoItem';
+import ChamadosHistoryCard from '../components/dashboard/ChamadosHistoryCard';
 import { ModalDetalhesPontuacao } from '../components/dashboard/ModalDetalhesPontuacao';
 import { ModalElegivel } from '../components/dashboard/ModalElegivel';
 import { ModalInelegivel } from '../components/dashboard/ModalInelegivel';
@@ -104,7 +104,7 @@ export default function DashboardScreen() {
     { name: 'Restante', value: Math.max(100 - percentualConsumo, 0) },
   ];
 
-  const chamados = displayMetricas?.ultimosChamados || [];
+
 
   const getPremioInfo = (pontos: number) => {
     if (pontos >= 90) return { titulo: '1º Prêmio', valor: 'R$ 300,00' };
@@ -193,13 +193,10 @@ export default function DashboardScreen() {
         </div>
 
         {/* Últimos Chamados */}
-        <div className="lg:col-span-2 bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-border dark:border-border">
-          <h3 className="text-base font-bold text-light-text-main dark:text-text-main mb-4">Últimos Chamados Apurados</h3>
-          <div className="space-y-3">
-            {chamados.map((item: any) => (
-              <ChamadoItem key={item.id} item={item} />
-            ))}
-          </div>
+        <div className="lg:col-span-2">
+          {displayMetricas?.idTecnico && (
+            <ChamadosHistoryCard tecnicoId={displayMetricas.idTecnico} />
+          )}
         </div>
       </div>
 

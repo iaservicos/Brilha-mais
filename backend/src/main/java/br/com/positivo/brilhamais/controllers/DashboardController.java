@@ -63,4 +63,13 @@ public class DashboardController {
         motorCalculoService.calcularEProcessarTecnico(matricula);
         return ResponseEntity.ok("Cálculo individual concluído para o técnico com matrícula " + matricula);
     }
+
+    @GetMapping("/tecnico/{id}/chamados")
+    public ResponseEntity<org.springframework.data.domain.Page<br.com.positivo.brilhamais.dto.ChamadoResumoDTO>> getChamadosTecnico(
+            @PathVariable("id") Integer id,
+            @RequestParam(name = "dataInicio", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(name = "dataFim", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(dashboardService.getChamadosPaginados(id, dataInicio, dataFim, pageable));
+    }
 }

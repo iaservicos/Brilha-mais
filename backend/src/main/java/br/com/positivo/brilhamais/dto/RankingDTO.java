@@ -14,6 +14,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class RankingDTO {
     private Integer posicaoRanking;
+    private Integer idTecnico;
     private String tecnico;
     
     private Double pontosTotal;
@@ -39,8 +40,7 @@ public class RankingDTO {
     private Integer npsPromotores;
     private Integer npsDetratores;
     
-    private java.util.List<ChamadoResumoDTO> ultimosChamados;
-    
+
     private Boolean elegivel;
     private String motivoInelegibilidade;
     private LocalDate mesReferencia;

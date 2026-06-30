@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
 import { CircularProgress } from '../components/ui/CircularProgress';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import ChamadosHistoryCard from '../components/dashboard/ChamadosHistoryCard';
 import basesData from '../utils/bases_atp.json';
 
 export default function AdminDashboardScreen() {
@@ -137,26 +138,24 @@ export default function AdminDashboardScreen() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* JSDoc: O Moderador ganha um filtro extra para selecionar qual equipe ele quer inspecionar */}
-          {isModerador && (
-            <div className="w-full sm:w-auto">
-              <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Equipe</label>
-              <select
-                value={selectedEquipe}
-                onChange={(e) => setSelectedEquipe(e.target.value)}
-                className="w-full sm:w-64 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
-              >
-                <option value="all">Todas as Equipes</option>
-                {equipesDisponiveis.map(eq => {
-                  const baseInfo = basesData.find((b: any) => b.ct_codigo === eq);
-                  const label = baseInfo ? `${eq} - ${baseInfo.nome_atp || ''} (${baseInfo.uf || ''})` : eq;
-                  return <option key={eq} value={eq}>{label}</option>
-                })}
-              </select>
-            </div>
-          )}
+          {/* JSDoc: Dropdown de equipes disponivel para todos os lideres (filtrado via state para Supervisores) */}
+          <div className="w-full sm:w-auto">
+            <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Equipe</label>
+            <select
+              value={selectedEquipe}
+              onChange={(e) => setSelectedEquipe(e.target.value)}
+              className="w-full sm:w-64 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
+            >
+              <option value="all">Todas as Equipes</option>
+              {equipesDisponiveis.map(eq => {
+                const baseInfo = basesData.find((b: any) => b.ct_codigo === eq);
+                const label = baseInfo ? `${eq} - ${baseInfo.nome_atp || ''} (${baseInfo.uf || ''})` : eq;
+                return <option key={eq} value={eq}>{label}</option>
+              })}
+            </select>
+          </div>
 
-          {/* JSDoc: Administradores só veem técnicos da própria base/equipe (Filtro automático via state e useMemo) */}
+          {/* JSDoc: Técnicos da base/equipe */}
           <div className="w-full sm:w-auto">
             <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Técnico Analisado</label>
             <select
@@ -351,6 +350,9 @@ export default function AdminDashboardScreen() {
             </div>
           </div>
 
+          <div className="mt-8">
+             <ChamadosHistoryCard tecnicoId={displayMetricas.idTecnico} />
+          </div>
         </div>
       )}
     </div>

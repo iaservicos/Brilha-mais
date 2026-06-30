@@ -24,6 +24,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Collections;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -58,18 +61,6 @@ public class DashboardService {
 
         Map<Integer, List<ApuracaoMensal>> historicoPorTecnico = fetchHistoricoPorTecnico(tecnicoIds);
 
-        Campanha campanhaAtiva = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
-        LocalDateTime dataInicio = campanhaAtiva != null ? campanhaAtiva.getDataInicio().atStartOfDay()
-                : mesAno.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime dataFim = campanhaAtiva != null ? campanhaAtiva.getDataFim().atTime(23, 59, 59, 999999999)
-                : mesAno.withDayOfMonth(mesAno.lengthOfMonth()).atTime(23, 59, 59, 999999999);
-
-        Map<Integer, List<Chamado>> chamadosPorTecnico = fetchChamadosPorTecnico(tecnicoIds, dataInicio, dataFim);
-
-        List<Long> chamadosIds = chamadosPorTecnico.values().stream().flatMap(List::stream)
-                .map(Chamado::getNumeroChamado).collect(Collectors.toList());
-        Map<Long, Map<String, String>> detalhesChamado = fetchPecasETextosChamados(chamadosIds);
-
         List<RankingDTO> ranking = new ArrayList<>();
         int posicao = 1;
 
@@ -81,12 +72,7 @@ public class DashboardService {
                     .map(h -> mapToHistoricoDTO(h))
                     .collect(Collectors.toList());
 
-            List<Chamado> chamadosRecentes = chamadosPorTecnico.getOrDefault(idTecnico, new ArrayList<>());
-            List<ChamadoResumoDTO> ultimosChamados = chamadosRecentes.stream().limit(3)
-                    .map(c -> mapToChamadoResumoDTO(c, detalhesChamado.get(c.getNumeroChamado())))
-                    .collect(Collectors.toList());
-
-            ranking.add(mapToRankingDTOFromApuracao(apuracao, posicao++, historico, ultimosChamados));
+            ranking.add(mapToRankingDTOFromApuracao(apuracao, posicao++, historico));
         }
 
         return ranking;
@@ -178,10 +164,10 @@ public class DashboardService {
                 .build();
     }
 
-    private RankingDTO mapToRankingDTOFromApuracao(ApuracaoMensal apuracao, int pos, List<HistoricoDTO> historico,
-            List<ChamadoResumoDTO> ultimosChamados) {
+    private RankingDTO mapToRankingDTOFromApuracao(ApuracaoMensal apuracao, int pos, List<HistoricoDTO> historico) {
         return RankingDTO.builder()
                 .posicaoRanking(pos)
+                .idTecnico(apuracao.getTecnico().getIdTecnico())
                 .tecnico(apuracao.getTecnico().getNomeCompleto())
                 .pontosTotal(valToDouble(apuracao.getPontuacaoTotal()))
                 .percentualPerdidos(valToPctBD(apuracao.getAtingimentoPerdidos()))
@@ -200,7 +186,6 @@ public class DashboardService {
                 .pontosNps(valToDouble(apuracao.getPontosNps()))
                 .npsPromotores(0)
                 .npsDetratores(0)
-                .ultimosChamados(ultimosChamados)
                 .elegivel(apuracao.getStatusElegibilidade())
                 .motivoInelegibilidade(apuracao.getMotivoInelegibilidade())
                 .mesReferencia(apuracao.getMesAno())
@@ -226,5 +211,28 @@ public class DashboardService {
 
     private int valToInt(Number n) {
         return n != null ? n.intValue() : 0;
+    }
+
+    public Page<ChamadoResumoDTO> getChamadosPaginados(Integer idTecnico, LocalDate dataInicio, LocalDate dataFim, Pageable pageable) {
+        LocalDateTime inicio = dataInicio != null ? dataInicio.atStartOfDay() : null;
+        LocalDateTime fim = dataFim != null ? dataFim.atTime(23, 59, 59, 999999999) : null;
+
+        Page<Chamado> chamadosPage = chamadoRepository.findChamadosPorTecnicoPaginado(idTecnico, inicio, fim, pageable);
+
+        if (chamadosPage.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, chamadosPage.getTotalElements());
+        }
+
+        List<Long> chamadosIds = chamadosPage.getContent().stream()
+                .map(Chamado::getNumeroChamado)
+                .collect(Collectors.toList());
+
+        Map<Long, Map<String, String>> detalhesChamado = fetchPecasETextosChamados(chamadosIds);
+
+        List<ChamadoResumoDTO> dtos = chamadosPage.getContent().stream()
+                .map(c -> mapToChamadoResumoDTO(c, detalhesChamado.get(c.getNumeroChamado())))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, chamadosPage.getTotalElements());
     }
 }
