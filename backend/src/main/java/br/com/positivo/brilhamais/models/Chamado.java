@@ -48,7 +48,7 @@ public class Chamado {
     @Column(name = "tecnico_nome")
     private String tecnicoNome;
 
-    @Column(name = "classificacao_chamado")
+    @Column(name = "classifica_chamado")
     private String classificacaoChamado;
 
     @Column(name = "texto_encerrado")

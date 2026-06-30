@@ -162,7 +162,7 @@ def process_base_dl(task_id: str, file_contents: bytes):
                 # Ingestão Incremental: Se o chamado já existir, ele é atualizado
                 conn.execute(text("""
                     INSERT INTO tb_chamado (chamado, projeto, ft, sla_status, equipamento, material_descricao, comercial, 
-                    assistencia_centro_trabalho, assistencia_nome, tecnico_nome, texto_encerrado, reincidente, classificacao_chamado, id_tecnico) 
+                    assistencia_centro_trabalho, assistencia_nome, tecnico_nome, texto_encerrado, reincidente, classifica_chamado, id_tecnico) 
                     VALUES (:chamado, :projeto, :ft, :sla_status, :equipamento, :material_descricao, :comercial, 
                     :assistencia_centro_trabalho, :assistencia_nome, :tecnico_nome, :texto_encerrado, :reincidente, :classificacao_chamado, :id_tecnico)
                     ON CONFLICT (chamado) DO UPDATE SET 
@@ -177,7 +177,7 @@ def process_base_dl(task_id: str, file_contents: bytes):
                     tecnico_nome = EXCLUDED.tecnico_nome, 
                     texto_encerrado = EXCLUDED.texto_encerrado, 
                     reincidente = EXCLUDED.reincidente, 
-                    classificacao_chamado = EXCLUDED.classificacao_chamado, 
+                    classifica_chamado = EXCLUDED.classifica_chamado, 
                     id_tecnico = EXCLUDED.id_tecnico
                 """), chunk)
                 conn.commit()
