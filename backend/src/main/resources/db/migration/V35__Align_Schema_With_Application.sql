@@ -1,38 +1,24 @@
 -- =================================================================================
--- V35 - ALINHAMENTO ESTRITO DO SCHEMA COM A PLANILHA HOMOLOGADA
+-- V35 - ALINHAMENTO DE SCHEMA DO BANCO COM A APLICAÇÃO (PYTHON/JAVA)
 -- =================================================================================
--- Esta migration:
--- 1. Renomeia as colunas para bater com os nomes homologados da Base DL.
--- 2. Exclui permanentemente as colunas legadas do V1 que não fazem parte do escopo.
--- 3. Mantém o id_tecnico intacto para preservar a arquitetura relacional de KPIs.
+-- As aplicações (Chamado.java e api_ingestao.py) sofreram refatorações 
+-- onde as propriedades foram renomeadas para refletir os cabeçalhos 
+-- da planilha do Excel.
+-- Esta migration aplica os devidos "RENAME" no banco de dados Supabase (Render)
+-- garantindo que o backend em produção encontre as colunas esperadas 
+-- sem quebrar o ecossistema de views.
 -- =================================================================================
 
--- 1. Renomeia colunas para bater com o padrão homologado (Base DL)
+-- 1. Renomeia as colunas base para match com o código Java e Ingestão
 ALTER TABLE tb_chamado RENAME COLUMN numero_chamado TO chamado;
 ALTER TABLE tb_chamado RENAME COLUMN data_abertura TO ft;
 ALTER TABLE tb_chamado RENAME COLUMN status_sla TO sla_status;
 ALTER TABLE tb_chamado RENAME COLUMN ct_base TO assistencia_centro_trabalho;
-ALTER TABLE tb_chamado RENAME COLUMN classificacao_chamado TO classifica_chamado;
 
--- 2. Adiciona as colunas nominais que vêm da planilha e faltavam no schema
-ALTER TABLE tb_chamado ADD COLUMN IF NOT EXISTS assistencia_nome VARCHAR(255);
-ALTER TABLE tb_chamado ADD COLUMN IF NOT EXISTS tecnico_nome VARCHAR(255);
+-- 2. Adiciona colunas redundantes que foram inseridas nas entidades
+ALTER TABLE tb_chamado ADD COLUMN assistencia_nome VARCHAR(255);
+ALTER TABLE tb_chamado ADD COLUMN tecnico_nome VARCHAR(255);
 
--- 3. Remove a obrigatoriedade (NOT NULL) de FT para evitar bloqueios na ingestão
+-- 3. Remove a constraint NOT NULL de FT (antiga data_abertura) para permitir 
+-- a ingestão de linhas incompletas da planilha sem disparar NotNullViolation
 ALTER TABLE tb_chamado ALTER COLUMN ft DROP NOT NULL;
-
--- 4. LIMPEZA TOTAL (OPÇÃO A): Remove todas as colunas que não estão na lista homologada
--- (Obs: id_tecnico é preservado)
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS data_encerramento;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS segmento;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS tempo_atendimento_min;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS sla_data_limite;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS cliente_nome;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS texto_abertura;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS ocorrencia_chamado;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS defeito;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS sla_cef;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS ofensor;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS encdesc;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS pp;
-ALTER TABLE tb_chamado DROP COLUMN IF EXISTS status_chamado;
