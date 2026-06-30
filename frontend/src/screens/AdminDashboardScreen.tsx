@@ -10,14 +10,16 @@ import basesData from '../utils/bases_atp.json';
 export default function AdminDashboardScreen() {
   const { user } = useAuthStore();
   
-  // JSDoc: Identifica se é Moderador (nível 3) ou Administrador (nível 2)
+  // JSDoc: Identifica se é Moderador (nível 3)
   const isModerador = user?.role === 'MODERADOR';
 
   const [rankingOriginal, setRankingOriginal] = useState<any[]>([]);
+  const [todosTecnicos, setTodosTecnicos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Filtros
+  const [selectedSupervisor, setSelectedSupervisor] = useState<string>('all');
   const [selectedEquipe, setSelectedEquipe] = useState<string>('all');
   const [selectedTecnicoIdentifier, setSelectedTecnicoIdentifier] = useState<string>('all');
 
@@ -26,23 +28,34 @@ export default function AdminDashboardScreen() {
 
   useEffect(() => {
     let mounted = true;
-    const fetchMetricas = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        // O ranking traz a lista de todos os técnicos e seus resultados
-        const response = await api.get('/dashboard/ranking');
-        if (mounted && response.data) {
-          setRankingOriginal(response.data);
+        // Busca a arvore completa de funcionarios e os resultados do ranking simultaneamente
+        const [rankingResp, tecnicosResp] = await Promise.all([
+          api.get('/dashboard/ranking'),
+          api.get('/tecnicos')
+        ]);
+        
+        if (mounted) {
+          if (rankingResp.data) setRankingOriginal(rankingResp.data);
+          if (tecnicosResp.data) setTodosTecnicos(tecnicosResp.data);
         }
       } catch (error) {
-        console.error('Erro ao buscar ranking:', error);
+        console.error('Erro ao buscar dados do dashboard:', error);
       } finally {
         if (mounted) setLoading(false);
       }
     };
-    fetchMetricas();
+    fetchData();
+    
+    // Configura valor inicial do supervisor se não for moderador
+    if (!isModerador && user?.matricula) {
+      setSelectedSupervisor(user.matricula);
+    }
+    
     return () => { mounted = false; };
-  }, []);
+  }, [isModerador, user?.matricula]);
 
   const handleProcessarMes = async () => {
     try {
@@ -62,53 +75,109 @@ export default function AdminDashboardScreen() {
     }
   };
 
-  // 1. Lógica de Equipes
-  // JSDoc: Se for Moderador, pode ver todas. Se for Administrador, trava nas equipes vinculadas.
-  const equipesPermitidas = useMemo(() => {
-    if (isModerador) return new Set<string>(); // Moderador pode tudo, tratado depois
-    return new Set(user?.localEquipe?.split(',') || []);
-  }, [isModerador, user?.localEquipe]);
+  // 1. Lógica de Supervisores
+  const listaSupervisores = useMemo(() => {
+    return todosTecnicos.filter(t => t.role === 'ADMIN');
+  }, [todosTecnicos]);
 
+  // Se for Moderador, escolhe qualquer um. Se for Admin, crava nele mesmo.
+  const supervisorEfetivo = isModerador ? selectedSupervisor : (user?.matricula || 'none');
+
+  // 2. Lógica de Equipes (Base ATP)
   const equipesDisponiveis = useMemo(() => {
     const equipes = new Set<string>();
-    rankingOriginal.forEach(t => {
-      if (t.localEquipe) {
-        if (isModerador || equipesPermitidas.has(t.localEquipe)) {
-          equipes.add(t.localEquipe);
+    
+    if (supervisorEfetivo === 'all') {
+      // Moderador vendo todos os supervisores = vê todas as bases
+      todosTecnicos.forEach(t => {
+        if (t.ctBase) {
+          t.ctBase.split(',').forEach((b: string) => equipes.add(b.trim()));
         }
+      });
+    } else {
+      // Pega as bases do supervisor selecionado
+      const supervisor = listaSupervisores.find(s => s.matricula === supervisorEfetivo);
+      if (supervisor && supervisor.ctBase) {
+        supervisor.ctBase.split(',').forEach((b: string) => equipes.add(b.trim()));
       }
-    });
-    return Array.from(equipes).sort();
-  }, [rankingOriginal, isModerador, equipesPermitidas]);
-
-  const equipeEfetiva = isModerador ? selectedEquipe : (selectedEquipe !== 'all' ? selectedEquipe : 'all_permitted');
-
-  // 2. Lógica de Técnicos Visíveis
-  const tecnicosVisiveis = useMemo(() => {
-    if (equipeEfetiva === 'all') return rankingOriginal; // Apenas Moderador chega aqui com 'all'
-    if (equipeEfetiva === 'all_permitted') {
-      return rankingOriginal.filter(t => equipesPermitidas.has(t.localEquipe));
     }
-    return rankingOriginal.filter(t => t.localEquipe === equipeEfetiva);
-  }, [rankingOriginal, equipeEfetiva, equipesPermitidas]);
+    
+    return Array.from(equipes).filter(e => e.length > 0).sort();
+  }, [todosTecnicos, listaSupervisores, supervisorEfetivo]);
 
-  // Se a equipe mudar e o técnico atual não estiver nela, reseta o seletor
+  // Se a base selecionada não estiver na lista (ex: mudou de supervisor), reseta
+  useEffect(() => {
+    if (selectedEquipe !== 'all' && !equipesDisponiveis.includes(selectedEquipe)) {
+      setSelectedEquipe('all');
+    }
+  }, [equipesDisponiveis, selectedEquipe]);
+
+  // 3. Lógica de Técnicos Visíveis
+  const tecnicosVisiveis = useMemo(() => {
+    // Pega só os TECNICOS
+    let lista = todosTecnicos.filter(t => t.role === 'TECNICO');
+    
+    // Filtra pelas bases permitidas (do supervisor atual)
+    if (selectedEquipe !== 'all') {
+      lista = lista.filter(t => t.ctBase === selectedEquipe);
+    } else {
+      // Se "Todas as equipes", mas tem um supervisor selecionado, filtra apenas tecnicos das bases dele
+      if (supervisorEfetivo !== 'all') {
+         lista = lista.filter(t => t.ctBase && equipesDisponiveis.includes(t.ctBase));
+      }
+    }
+    return lista.sort((a, b) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''));
+  }, [todosTecnicos, selectedEquipe, supervisorEfetivo, equipesDisponiveis]);
+
+  // Se o técnico selecionado não estiver na lista atual, reseta
   useEffect(() => {
     if (selectedTecnicoIdentifier !== 'all') {
-      const tecnicoAindaVisivel = tecnicosVisiveis.find(t => (t.matricula || t.tecnico) === selectedTecnicoIdentifier);
+      const tecnicoAindaVisivel = tecnicosVisiveis.find(t => t.matricula === selectedTecnicoIdentifier);
       if (!tecnicoAindaVisivel) {
         setSelectedTecnicoIdentifier('all');
       }
     }
   }, [tecnicosVisiveis, selectedTecnicoIdentifier]);
 
-  // 3. Técnico Selecionado
+  // 4. Técnico Selecionado (Cruza os dados com o ranking)
   const metricas = useMemo(() => {
     if (selectedTecnicoIdentifier === 'all') return null;
-    return tecnicosVisiveis.find(t => (t.matricula || t.tecnico) === selectedTecnicoIdentifier);
-  }, [tecnicosVisiveis, selectedTecnicoIdentifier]);
+    
+    // Procura o técnico selecionado na lista bruta
+    const tecnicoInfo = tecnicosVisiveis.find(t => t.matricula === selectedTecnicoIdentifier);
+    if (!tecnicoInfo) return null;
+    
+    // Procura os resultados dele no motor de calculo
+    const rankingData = rankingOriginal.find(r => r.matricula === selectedTecnicoIdentifier);
+    
+    // Se não tiver dados no ranking (ex: mes vazio ou novo tecnico), retorna um stub zerado
+    if (!rankingData) {
+      return {
+         idTecnico: tecnicoInfo.idTecnico,
+         tecnico: tecnicoInfo.nomeCompleto,
+         matricula: tecnicoInfo.matricula,
+         localEquipe: tecnicoInfo.ctBase,
+         pontosTotal: 0,
+         percentualSla: 0,
+         pontosSla: 0,
+         percentualReincidencia: 0,
+         pontosReincidencia: 0,
+         quantidadeProdutividade: 0,
+         pontosProdutividade: 0,
+         percentualEficienciaPecas: 0,
+         pontosPecas: 0,
+         npsScore: 0,
+         pontosNps: 0,
+         elegivel: false,
+         motivoInelegibilidade: 'Nenhum resultado processado para o mês',
+         historico: []
+      };
+    }
+    
+    return rankingData;
+  }, [tecnicosVisiveis, selectedTecnicoIdentifier, rankingOriginal]);
 
-  // Aplicação do mês para o técnico selecionado
+  // Aplicação do mês para o técnico selecionado (Drilldown)
   const displayMetricas = useMemo(() => {
     if (!metricas) return null;
     if (selectedMonth === 'Média Final') return metricas;
@@ -117,16 +186,24 @@ export default function AdminDashboardScreen() {
     return { ...metricas, ...monthData };
   }, [metricas, selectedMonth]);
 
-  // 4. Resumo da Equipe (Team Dashboard)
+  // 5. Resumo da Equipe (Team Dashboard)
   const teamSummary = useMemo(() => {
     if (tecnicosVisiveis.length === 0) return null;
-    const somaTotal = tecnicosVisiveis.reduce((acc, t) => acc + (t.pontosTotal || 0), 0);
-    const mediaPontos = somaTotal / tecnicosVisiveis.length;
-    const somaProd = tecnicosVisiveis.reduce((acc, t) => acc + (t.quantidadeProdutividade || 0), 0);
-    const mediaSla = tecnicosVisiveis.reduce((acc, t) => acc + (t.percentualSla || 0), 0) / tecnicosVisiveis.length;
+    
+    // Pega as métricas REAIS dos técnicos visíveis
+    const metricasReais = tecnicosVisiveis.map(t => rankingOriginal.find(r => r.matricula === t.matricula)).filter(Boolean);
+    
+    if (metricasReais.length === 0) {
+      return { mediaPontos: 0, somaProd: 0, mediaSla: 0, qtd: tecnicosVisiveis.length };
+    }
+    
+    const somaTotal = metricasReais.reduce((acc, t) => acc + (t.pontosTotal || 0), 0);
+    const mediaPontos = somaTotal / metricasReais.length;
+    const somaProd = metricasReais.reduce((acc, t) => acc + (t.quantidadeProdutividade || 0), 0);
+    const mediaSla = metricasReais.reduce((acc, t) => acc + (t.percentualSla || 0), 0) / metricasReais.length;
     
     return { mediaPontos, somaProd, mediaSla, qtd: tecnicosVisiveis.length };
-  }, [tecnicosVisiveis]);
+  }, [tecnicosVisiveis, rankingOriginal]);
 
   if (loading) {
     return (
@@ -145,7 +222,7 @@ export default function AdminDashboardScreen() {
 
   return (
     <div className="space-y-6 pb-6 mt-16 md:mt-24 px-4 md:px-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-light-surface dark:bg-surface p-4 md:p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
+      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4 bg-light-surface dark:bg-surface p-4 md:p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
         <div>
           <h1 className="text-2xl font-bold text-light-text-main dark:text-text-main flex items-center gap-2">
             <Users className="text-accent-teal" size={24} />
@@ -166,16 +243,33 @@ export default function AdminDashboardScreen() {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* JSDoc: Dropdown de equipes disponivel para todos os lideres (filtrado via state para Supervisores) */}
-          <div className="w-full sm:w-auto">
-            <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Equipe</label>
+        <div className="flex flex-col lg:flex-row items-center gap-3 w-full xl:w-auto">
+          
+          {/* JSDoc: Dropdown de Supervisor (Apenas para Moderador interagir) */}
+          <div className="w-full lg:w-auto">
+            <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Supervisor</label>
+            <select
+              value={supervisorEfetivo}
+              onChange={(e) => isModerador && setSelectedSupervisor(e.target.value)}
+              disabled={!isModerador}
+              className={`w-full lg:w-48 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md p-2.5 outline-none transition-shadow ${!isModerador ? 'opacity-75 cursor-not-allowed' : 'focus:ring-accent-teal focus:border-accent-teal'}`}
+            >
+              {isModerador && <option value="all">Todos os Supervisores</option>}
+              {listaSupervisores.map(s => (
+                <option key={s.matricula} value={s.matricula}>{s.nomeCompleto}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* JSDoc: Dropdown de equipes disponivel filtrado pelo Supervisor */}
+          <div className="w-full lg:w-auto">
+            <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Base ATP</label>
             <select
               value={selectedEquipe}
               onChange={(e) => setSelectedEquipe(e.target.value)}
-              className="w-full sm:w-64 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
+              className="w-full lg:w-64 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
             >
-              <option value="all">Todas as Equipes</option>
+              <option value="all">Todas as Bases</option>
               {equipesDisponiveis.map(eq => {
                 const baseInfo = basesData.find((b: any) => b.ct_codigo === eq);
                 const label = baseInfo ? `${eq} - ${baseInfo.nome_atp || ''} (${baseInfo.uf || ''})` : eq;
@@ -184,21 +278,21 @@ export default function AdminDashboardScreen() {
             </select>
           </div>
 
-          {/* JSDoc: Técnicos da base/equipe */}
-          <div className="w-full sm:w-auto">
+          {/* JSDoc: Técnicos da base/equipe selecionada */}
+          <div className="w-full lg:w-auto">
             <label className="block text-xs font-medium text-light-text-muted dark:text-text-muted mb-1 ml-1">Técnico Analisado</label>
             <select
               value={selectedTecnicoIdentifier}
               onChange={(e) => setSelectedTecnicoIdentifier(e.target.value)}
-              className="w-full sm:w-80 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
+              className="w-full lg:w-72 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
             >
               <option value="all">-- Visão da Equipe --</option>
               {tecnicosVisiveis.map(t => {
-                const id = t.matricula || t.tecnico;
+                const id = t.matricula;
                 const matText = t.matricula ? `(${t.matricula})` : '';
                 return (
                   <option key={id} value={id}>
-                    {t.tecnico} {matText}
+                    {t.nomeCompleto} {matText}
                   </option>
                 );
               })}
