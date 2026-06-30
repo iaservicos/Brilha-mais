@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Users, Filter, CheckCircle2, XCircle, Medal } from 'lucide-react';
+import { Users, Filter, CheckCircle2, XCircle, Medal, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
 import { CircularProgress } from '../components/ui/CircularProgress';
@@ -15,6 +15,7 @@ export default function AdminDashboardScreen() {
 
   const [rankingOriginal, setRankingOriginal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   // Filtros
   const [selectedEquipe, setSelectedEquipe] = useState<string>('all');
@@ -42,6 +43,24 @@ export default function AdminDashboardScreen() {
     fetchMetricas();
     return () => { mounted = false; };
   }, []);
+
+  const handleProcessarMes = async () => {
+    try {
+      setIsProcessing(true);
+      await api.post('/dashboard/calcular');
+      // Recarrega os dados após processamento
+      const response = await api.get('/dashboard/ranking');
+      if (response.data) {
+        setRankingOriginal(response.data);
+      }
+      alert('Cálculo finalizado com sucesso! A tela foi atualizada com os novos dados.');
+    } catch (error) {
+      console.error('Erro ao processar mês:', error);
+      alert('Ocorreu um erro ao processar o mês. Tente novamente.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // 1. Lógica de Equipes
   // JSDoc: Se for Moderador, pode ver todas. Se for Administrador, trava nas equipes vinculadas.
@@ -135,6 +154,16 @@ export default function AdminDashboardScreen() {
           <p className="text-sm text-light-text-muted dark:text-text-muted mt-1">
             {isModerador ? 'Visão global (Moderador)' : `Gestão da equipe: ${user?.localEquipe || 'Sem equipe vinculada'}`}
           </p>
+          {isModerador && (
+            <button
+              onClick={handleProcessarMes}
+              disabled={isProcessing}
+              className="mt-3 flex items-center gap-2 bg-accent-teal hover:bg-accent-teal/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={isProcessing ? 'animate-spin' : ''} />
+              {isProcessing ? 'Processando Mês...' : 'Processar Mês'}
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
