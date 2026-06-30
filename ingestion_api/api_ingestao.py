@@ -95,6 +95,23 @@ def process_base_dl(task_id: str, file_contents: bytes):
             df_tec = pd.read_sql("SELECT id_tecnico, UPPER(nome_completo) as nome FROM tb_tecnico", conn)
             tec_map = pd.Series(df_tec.id_tecnico.values, index=df_tec.nome).to_dict()
             
+            # Sincronização automática de Bases (Evita ForeignKeyViolation)
+            task_progress[task_id] = {"status": "processing", "progress": 15, "message": "Sincronizando novas bases (ATPs)..."}
+            bases_df = df[['Assistencia_centro_trabalho', 'Assistencia_nome']].dropna().drop_duplicates()
+            bases_insert = []
+            for _, row in bases_df.iterrows():
+                bases_insert.append({
+                    'ct': str(row['Assistencia_centro_trabalho'])[:20],
+                    'nome': str(row['Assistencia_nome'])[:150]
+                })
+            if bases_insert:
+                conn.execute(text("""
+                    INSERT INTO tb_base_atp (ct_codigo, nome_atp, tipo_atp) 
+                    VALUES (:ct, :nome, 'IMPORTACAO_AUTO') 
+                    ON CONFLICT (ct_codigo) DO NOTHING
+                """), bases_insert)
+                conn.commit()
+
             # 3. Tratamento e transformação linha a linha
             chamados_insert = []
             for _, row in df.iterrows():
