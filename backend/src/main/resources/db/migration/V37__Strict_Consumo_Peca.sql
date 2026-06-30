@@ -6,7 +6,12 @@
 DROP VIEW IF EXISTS vw_eficiencia_pecas CASCADE;
 
 -- 2. Renomeação Segura da Chave Estrangeira
-ALTER TABLE tb_consumo_peca RENAME COLUMN IF EXISTS numero_chamado TO chamado;
+DO $$ 
+BEGIN 
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tb_consumo_peca' AND column_name = 'numero_chamado') THEN
+        ALTER TABLE tb_consumo_peca RENAME COLUMN numero_chamado TO chamado;
+    END IF;
+END $$;
 
 -- 3. Inclusão das Colunas Faltantes
 ALTER TABLE tb_consumo_peca ADD COLUMN IF NOT EXISTS ct VARCHAR(255);
