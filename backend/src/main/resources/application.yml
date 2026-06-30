@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   tomcat:
     # Permite payloads de até 10MB — necessário para imagens em base64 (2MB img → ~2.7MB base64)
     max-http-form-post-size: 10MB
