@@ -1,4 +1,7 @@
 server:
+  error:
+    include-message: always
+    include-stacktrace: always
   port: ${PORT:8080}
   tomcat:
     # Permite payloads de até 10MB — necessário para imagens em base64 (2MB img → ~2.7MB base64)
