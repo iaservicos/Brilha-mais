@@ -22,8 +22,8 @@ export default function CampaignManager() {
 
   const fetchCampanhaAtual = async () => {
     try {
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
-      const response = await axios.get(`${baseURL}/api/v1/campanha/ativa`, {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const response = await axios.get(`${baseURL}/campanha/ativa`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCampanhaAtual(response.data);
@@ -47,8 +47,8 @@ export default function CampaignManager() {
     setError('');
 
     try {
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
-      await axios.post(`${baseURL}/api/v1/campanha/nova-campanha`, {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      await axios.post(`${baseURL}/campanha/nova-campanha`, {
         dataInicio,
         dataFim,
         limparDadosBrutos

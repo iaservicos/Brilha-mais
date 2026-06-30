@@ -30,5 +30,5 @@ EXPOSE 8080
 ENV PORT=8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# Comando para inicializar a aplicação
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Comando para inicializar a aplicação otimizado para o plano Free (512MB) do Render
+ENTRYPOINT ["java", "-Xmx300m", "-Xss512k", "-XX:+UseZGC", "-jar", "app.jar"]

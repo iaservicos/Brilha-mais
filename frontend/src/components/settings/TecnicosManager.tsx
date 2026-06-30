@@ -38,8 +38,8 @@ export default function TecnicosManager() {
   const fetchTecnicos = async () => {
     try {
       setLoading(true);
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
-      const response = await axios.get(`${baseURL}/api/v1/tecnicos`, {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      const response = await axios.get(`${baseURL}/tecnicos`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTecnicos(response.data);
@@ -76,8 +76,8 @@ export default function TecnicosManager() {
     if (!window.confirm('Tem certeza que deseja excluir este técnico? Esta ação é irreversível e pode quebrar os históricos se ele possuir métricas atreladas.')) return;
     
     try {
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
-      await axios.delete(`${baseURL}/api/v1/tecnicos/${id}`, {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      await axios.delete(`${baseURL}/tecnicos/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTecnicos(tecnicos.filter(t => t.idTecnico !== id));
@@ -93,16 +93,16 @@ export default function TecnicosManager() {
     setError('');
 
     try {
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       
       if (selectedTecnico) {
         // Update
-        await axios.put(`${baseURL}/api/v1/tecnicos/${selectedTecnico.idTecnico}`, formData, {
+        await axios.put(`${baseURL}/tecnicos/${selectedTecnico.idTecnico}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
       } else {
         // Create (need a default password, e.g. M@#$2020 or CPF)
-        await axios.post(`${baseURL}/api/v1/tecnicos`, {
+        await axios.post(`${baseURL}/tecnicos`, {
           ...formData,
           senha: 'senha-temporaria' // No primeiro acesso ele vai redefinir
         }, {
@@ -127,8 +127,8 @@ export default function TecnicosManager() {
     setError('');
 
     try {
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8080` : 'http://localhost:8080';
-      await axios.patch(`${baseURL}/api/v1/tecnicos/${selectedTecnico.idTecnico}/senha`, 
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+      await axios.patch(`${baseURL}/tecnicos/${selectedTecnico.idTecnico}/senha`, 
       { novaSenha: newPassword }, 
       { headers: { Authorization: `Bearer ${token}` } });
       

@@ -3,10 +3,7 @@ import * as SecureStore from '../utils/secureStore';
 
 // Detecta o IP dinamicamente para Web
 const getBaseURL = () => {
-  if (typeof window !== 'undefined' && window.location) {
-    return `http://${window.location.hostname}:8080/api/v1`;
-  }
-  return 'http://localhost:8080/api/v1';
+  return import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 };
 
 export const api = axios.create({

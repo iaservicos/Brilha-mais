@@ -100,8 +100,7 @@ export default function SettingsScreen() {
     formData.append('file', file);
 
     try {
-      // Endpoint que aponta para o Microserviço Python FastAPI
-      const baseURL = typeof window !== 'undefined' && window.location ? `http://${window.location.hostname}:8001` : 'http://localhost:8001';
+      const baseURL = import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8001';
       
       const response = await axios.post(`${baseURL}/api/ingestion/upload?type=${type}`, formData, {
         headers: {
