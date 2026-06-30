@@ -32,8 +32,10 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not secret:
         raise HTTPException(status_code=500, detail="JWT_SECRET não configurado no servidor Python")
     try:
-        # Decodifica e valida a assinatura gerada pelo Spring Boot (Java)
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        # Decodifica o secret em Base64 para bater com o formato do Spring Boot (Java)
+        import base64
+        secret_bytes = base64.b64decode(secret)
+        payload = jwt.decode(token, secret_bytes, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Sua sessão expirou. Faça login novamente.")
