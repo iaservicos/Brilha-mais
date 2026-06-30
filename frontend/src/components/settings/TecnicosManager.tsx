@@ -6,7 +6,6 @@ import { Pencil, Trash2, KeyRound, Plus, X, Search, Loader2 } from 'lucide-react
 interface Tecnico {
   idTecnico: number;
   matricula: string;
-  cpf: string;
   nomeCompleto: string;
   ctBase: string;
   cargo: string;
@@ -28,6 +27,8 @@ export default function TecnicosManager() {
   // Form state
   const [formData, setFormData] = useState<Partial<Tecnico>>({});
   const [newPassword, setNewPassword] = useState('');
+  const [autoPassword, setAutoPassword] = useState(true);
+  const [createPassword, setCreatePassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -101,10 +102,10 @@ export default function TecnicosManager() {
           headers: { Authorization: `Bearer ${token}` }
         });
       } else {
-        // Create (need a default password, e.g. M@#$2020 or CPF)
+        // Create 
         await axios.post(`${baseURL}/tecnicos`, {
           ...formData,
-          senha: 'senha-temporaria' // No primeiro acesso ele vai redefinir
+          senha: autoPassword ? 'brilha123' : createPassword 
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -274,15 +275,35 @@ export default function TecnicosManager() {
                       onChange={e => setFormData({...formData, matricula: e.target.value})}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text-muted uppercase">CPF (opcional)</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.cpf || ''}
-                      onChange={e => setFormData({...formData, cpf: e.target.value})}
-                    />
-                  </div>
+                  {!selectedTecnico && (
+                    <div className="col-span-2 space-y-3 mt-2 p-4 bg-surface/50 border border-border/50 rounded-xl">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={autoPassword}
+                          onChange={(e) => setAutoPassword(e.target.checked)}
+                          className="w-4 h-4 rounded border-border text-accent-teal focus:ring-accent-teal/30 bg-surface"
+                        />
+                        <span className="text-sm font-medium text-slate-300">
+                          Gerar senha padrão automaticamente (brilha123)
+                        </span>
+                      </label>
+                      
+                      {!autoPassword && (
+                        <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-2">
+                          <label className="text-xs font-semibold text-text-muted uppercase">Senha Inicial</label>
+                          <input 
+                            required={!autoPassword}
+                            type="text" 
+                            className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                            value={createPassword}
+                            onChange={e => setCreatePassword(e.target.value)}
+                            placeholder="Digite a senha..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-text-muted uppercase">CT Base</label>
                     <input 

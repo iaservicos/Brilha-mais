@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import br.com.positivo.brilhamais.dto.ResetSenhaRequest;
 
 import java.util.List;
 
@@ -67,9 +68,4 @@ public class TecnicoController {
             return ResponseEntity.ok().<Void>build();
         }).orElse(ResponseEntity.notFound().build());
     }
-}
-
-@Data
-class ResetSenhaRequest {
-    private String novaSenha;
 }
