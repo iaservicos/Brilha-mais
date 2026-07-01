@@ -60,7 +60,7 @@ export default function AdminDashboardScreen() {
   const handleProcessarMes = async () => {
     try {
       setIsProcessing(true);
-      await api.post('/dashboard/calcular');
+      await api.post('/dashboard/calcular', {}, { timeout: 120000 });
       // Recarrega os dados após processamento
       const response = await api.get('/dashboard/ranking');
       if (response.data) {
@@ -77,7 +77,10 @@ export default function AdminDashboardScreen() {
 
   // 1. Lógica de Supervisores
   const listaSupervisores = useMemo(() => {
-    return todosTecnicos.filter(t => t.role === 'ADMINISTRADOR');
+    return todosTecnicos.filter(t => {
+      const r = (t.role || '').toUpperCase();
+      return r.includes('ADMIN') || r.includes('SUPERVISOR');
+    });
   }, [todosTecnicos]);
 
   // Se for Moderador, escolhe qualquer um. Se for Admin, crava nele mesmo.
@@ -115,7 +118,10 @@ export default function AdminDashboardScreen() {
   // 3. Lógica de Técnicos Visíveis
   const tecnicosVisiveis = useMemo(() => {
     // Pega só os TECNICOS
-    let lista = todosTecnicos.filter(t => t.role === 'PADRAO');
+    let lista = todosTecnicos.filter(t => {
+      const r = (t.role || '').toUpperCase();
+      return r.includes('PADRAO') || r.includes('TECNICO') || r === '';
+    });
     
     // Filtra pelas bases permitidas (do supervisor atual)
     if (selectedEquipe !== 'all') {
