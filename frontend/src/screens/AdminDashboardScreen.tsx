@@ -77,7 +77,7 @@ export default function AdminDashboardScreen() {
 
   // 1. Lógica de Supervisores
   const listaSupervisores = useMemo(() => {
-    return todosTecnicos.filter(t => t.role === 'ADMIN');
+    return todosTecnicos.filter(t => t.role === 'ADMINISTRADOR');
   }, [todosTecnicos]);
 
   // Se for Moderador, escolhe qualquer um. Se for Admin, crava nele mesmo.
@@ -115,7 +115,7 @@ export default function AdminDashboardScreen() {
   // 3. Lógica de Técnicos Visíveis
   const tecnicosVisiveis = useMemo(() => {
     // Pega só os TECNICOS
-    let lista = todosTecnicos.filter(t => t.role === 'TECNICO');
+    let lista = todosTecnicos.filter(t => t.role === 'PADRAO');
     
     // Filtra pelas bases permitidas (do supervisor atual)
     if (selectedEquipe !== 'all') {
