@@ -27,6 +27,10 @@ public class Campanha {
     @Column(name = "ativa", nullable = false)
     private Boolean ativa;
 
+    @Column(name = "duracao_meses", nullable = false)
+    @Builder.Default
+    private Integer duracaoMeses = 1;
+
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
     

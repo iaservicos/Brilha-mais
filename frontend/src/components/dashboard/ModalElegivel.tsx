@@ -44,7 +44,7 @@ export const ModalElegivel: React.FC<ModalElegivelProps> = ({
             </>
           ) : (
             <>
-              <div className="text-2xl font-black text-text-muted dark:text-text-muted mb-2">{pontuacaoTotal} pontos</div>
+              <div className="text-2xl font-black text-light-text-muted dark:text-text-muted mb-2">{pontuacaoTotal} pontos</div>
               <p className="text-sm font-medium text-light-text-main dark:text-text-muted leading-relaxed">
                 Não desanime, sua pontuação pode melhorar! Lembre-se que a primeira faixa de premiação começa a partir de <strong>70 pontos</strong>.
               </p>
@@ -52,7 +52,7 @@ export const ModalElegivel: React.FC<ModalElegivelProps> = ({
           )}
         </div>
 
-        <button onClick={onClose} className="mt-8 w-full bg-accent-emerald hover:bg-emerald-600 text-text-main py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-accent-emerald/20">
+        <button onClick={onClose} className="mt-8 w-full bg-accent-emerald hover:bg-emerald-600 text-white dark:text-[#0f172a] py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-accent-emerald/20">
           Incrível!
         </button>
       </div>

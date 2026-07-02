@@ -30,7 +30,13 @@ public class CampanhaController {
                 .orElse(Campanha.builder().ativa(true).build());
         
         campanha.setDataInicio(request.getDataInicio());
-        campanha.setDataFim(request.getDataFim());
+        
+        if (request.getDuracaoMeses() != null) {
+            campanha.setDuracaoMeses(request.getDuracaoMeses());
+            campanha.setDataFim(request.getDataInicio().plusMonths(request.getDuracaoMeses()).minusDays(1));
+        } else {
+            campanha.setDataFim(request.getDataFim());
+        }
         
         return ResponseEntity.ok(campanhaRepository.save(campanha));
     }
@@ -42,9 +48,14 @@ public class CampanhaController {
             jdbcTemplate.execute("TRUNCATE TABLE tb_chamado, tb_consumo_peca, tb_reincidencia CASCADE");
         }
 
+        LocalDate dataFimCalculada = request.getDataInicio()
+                .plusMonths(request.getDuracaoMeses())
+                .minusDays(1);
+
         Campanha campanha = Campanha.builder()
                 .dataInicio(request.getDataInicio())
-                .dataFim(request.getDataFim())
+                .dataFim(dataFimCalculada)
+                .duracaoMeses(request.getDuracaoMeses())
                 .ativa(true)
                 .build();
         
@@ -55,6 +66,6 @@ public class CampanhaController {
 @lombok.Data
 class NovaCampanhaRequest {
     private LocalDate dataInicio;
-    private LocalDate dataFim;
+    private Integer duracaoMeses;
     private Boolean limparDadosBrutos;
 }

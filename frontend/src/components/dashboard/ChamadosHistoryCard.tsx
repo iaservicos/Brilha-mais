@@ -13,15 +13,16 @@ export default function ChamadosHistoryCard({ tecnicoId }: ChamadosHistoryCardPr
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [dataFiltro, setDataFiltro] = useState('');
 
   const fetchChamados = async (pageNumber: number) => {
     try {
       setLoading(true);
       const params: any = { page: pageNumber, size: 3 };
-      if (dataInicio) params.dataInicio = dataInicio;
-      if (dataFim) params.dataFim = dataFim;
+      if (dataFiltro) {
+        params.dataInicio = dataFiltro;
+        params.dataFim = dataFiltro;
+      }
       
       const response = await api.get(`/dashboard/tecnico/${tecnicoId}/chamados`, { params });
       if (response.data) {
@@ -70,18 +71,10 @@ export default function ChamadosHistoryCard({ tecnicoId }: ChamadosHistoryCardPr
           <Calendar size={14} className="text-light-text-muted ml-2" />
           <input 
             type="date" 
-            value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
-            className="bg-transparent border-none text-light-text-main dark:text-text-main text-xs focus:ring-0 outline-none w-24 sm:w-auto"
-            title="Data Inicial"
-          />
-          <span className="text-light-text-muted text-xs">até</span>
-          <input 
-            type="date" 
-            value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
-            className="bg-transparent border-none text-light-text-main dark:text-text-main text-xs focus:ring-0 outline-none w-24 sm:w-auto"
-            title="Data Final"
+            value={dataFiltro}
+            onChange={(e) => setDataFiltro(e.target.value)}
+            className="bg-transparent border-none text-light-text-main dark:text-text-main text-xs focus:ring-0 outline-none w-auto"
+            title="Data Específica"
           />
           <button 
             onClick={handlePesquisar}

@@ -34,6 +34,12 @@ public class Supervisor implements UserDetails {
     @Column(name = "senha")
     private String senha;
 
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "id_coordenador")
+    private Integer idCoordenador;
+
     @Column(name = "role")
     @Builder.Default
     private String role = "ADMINISTRADOR";

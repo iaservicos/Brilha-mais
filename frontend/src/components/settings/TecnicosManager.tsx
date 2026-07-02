@@ -149,13 +149,13 @@ export default function TecnicosManager() {
 
   return (
     <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1e293b] p-4 rounded-2xl border border-border">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-light-surface dark:bg-[#1e293b] p-4 rounded-2xl border border-light-borderStrong dark:border-border">
         <div className="relative w-full sm:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-text-muted" size={18} />
           <input 
             type="text" 
             placeholder="Buscar por nome ou matrícula..."
-            className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal text-slate-200 placeholder-slate-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl text-sm focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal text-light-text-main dark:text-slate-200 placeholder-light-text-muted dark:placeholder-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -170,10 +170,10 @@ export default function TecnicosManager() {
         </button>
       </div>
 
-      <div className="bg-[#1e293b] border border-border rounded-2xl overflow-hidden shadow-lg">
+      <div className="bg-light-surface dark:bg-[#1e293b] border border-light-borderStrong dark:border-border rounded-2xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50 text-text-muted text-xs uppercase font-semibold">
+            <thead className="bg-slate-100 dark:bg-surface/50 text-light-text-muted dark:text-text-muted text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-4">Matrícula</th>
                 <th className="px-6 py-4">Nome Completo</th>
@@ -183,31 +183,31 @@ export default function TecnicosManager() {
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-light-borderStrong dark:divide-border/50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={6} className="px-6 py-12 text-center text-light-text-muted dark:text-text-muted">
                     <Loader2 className="animate-spin mx-auto mb-2" size={24} />
                     Carregando técnicos...
                   </td>
                 </tr>
               ) : filteredTecnicos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={6} className="px-6 py-12 text-center text-light-text-muted dark:text-text-muted">
                     Nenhum técnico encontrado.
                   </td>
                 </tr>
               ) : (
                 filteredTecnicos.map(t => (
-                  <tr key={t.idTecnico} className="hover:bg-surface/30 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-300">{t.matricula}</td>
-                    <td className="px-6 py-3 text-slate-300">{t.nomeCompleto}</td>
-                    <td className="px-6 py-3 text-slate-400">{t.ctBase || '-'}</td>
+                  <tr key={t.idTecnico} className="hover:bg-slate-50 dark:hover:bg-surface/30 transition-colors">
+                    <td className="px-6 py-3 font-medium text-light-text-main dark:text-slate-300">{t.matricula}</td>
+                    <td className="px-6 py-3 text-light-text-main dark:text-slate-300">{t.nomeCompleto}</td>
+                    <td className="px-6 py-3 text-light-text-secondary dark:text-slate-400">{t.ctBase || '-'}</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider ${
                         t.role === 'MODERADOR' ? 'bg-amber-500/20 text-amber-400' : 
                         t.role === 'ADMINISTRADOR' ? 'bg-purple-500/20 text-purple-400' : 
-                        'bg-slate-500/20 text-slate-300'
+                        'bg-slate-200 dark:bg-slate-500/20 text-slate-600 dark:text-slate-300'
                       }`}>
                         {t.role}
                       </span>
@@ -220,13 +220,13 @@ export default function TecnicosManager() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEditModal(t)} className="p-2 hover:bg-accent-teal/10 hover:text-accent-teal text-slate-400 rounded-lg transition-colors" title="Editar">
+                        <button onClick={() => openEditModal(t)} className="p-2 hover:bg-accent-teal/10 hover:text-accent-teal text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Editar">
                           <Pencil size={16} />
                         </button>
-                        <button onClick={() => openPasswordModal(t)} className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-slate-400 rounded-lg transition-colors" title="Redefinir Senha">
+                        <button onClick={() => openPasswordModal(t)} className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Redefinir Senha">
                           <KeyRound size={16} />
                         </button>
-                        <button onClick={() => handleDelete(t.idTecnico)} className="p-2 hover:bg-rose-500/10 hover:text-rose-400 text-slate-400 rounded-lg transition-colors" title="Excluir">
+                        <button onClick={() => handleDelete(t.idTecnico)} className="p-2 hover:bg-rose-500/10 hover:text-rose-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Excluir">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -242,12 +242,12 @@ export default function TecnicosManager() {
       {/* MODAL EDIÇÃO/CRIAR */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#1e293b] border border-border rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-border">
-              <h3 className="text-xl font-bold text-slate-200">
+          <div className="bg-light-surface dark:bg-[#1e293b] border border-light-borderStrong dark:border-border rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-light-borderStrong dark:border-border">
+              <h3 className="text-xl font-bold text-light-text-main dark:text-slate-200">
                 {selectedTecnico ? 'Editar Técnico' : 'Adicionar Técnico'}
               </h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => setIsEditModalOpen(false)} className="text-light-text-muted dark:text-slate-400 hover:text-light-text-main dark:hover:text-white transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -256,46 +256,46 @@ export default function TecnicosManager() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Nome Completo</label>
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Nome Completo</label>
                     <input 
                       required
                       type="text" 
-                      className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
                       value={formData.nomeCompleto || ''}
                       onChange={e => setFormData({...formData, nomeCompleto: e.target.value})}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Matrícula</label>
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Matrícula</label>
                     <input 
                       required
                       type="text" 
-                      className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
                       value={formData.matricula || ''}
                       onChange={e => setFormData({...formData, matricula: e.target.value})}
                     />
                   </div>
                   {!selectedTecnico && (
-                    <div className="col-span-2 space-y-3 mt-2 p-4 bg-surface/50 border border-border/50 rounded-xl">
+                    <div className="col-span-2 space-y-3 mt-2 p-4 bg-slate-100 dark:bg-surface/50 border border-light-borderStrong dark:border-border/50 rounded-xl">
                       <label className="flex items-center gap-3 cursor-pointer">
                         <input 
                           type="checkbox" 
                           checked={autoPassword}
                           onChange={(e) => setAutoPassword(e.target.checked)}
-                          className="w-4 h-4 rounded border-border text-accent-teal focus:ring-accent-teal/30 bg-surface"
+                          className="w-4 h-4 rounded border-light-borderStrong dark:border-border text-accent-teal focus:ring-accent-teal/30 bg-slate-50 dark:bg-surface"
                         />
-                        <span className="text-sm font-medium text-slate-300">
+                        <span className="text-sm font-medium text-light-text-main dark:text-slate-300">
                           Gerar senha padrão automaticamente (brilha123)
                         </span>
                       </label>
                       
                       {!autoPassword && (
                         <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-2">
-                          <label className="text-xs font-semibold text-text-muted uppercase">Senha Inicial</label>
+                          <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Senha Inicial</label>
                           <input 
                             required={!autoPassword}
                             type="text" 
-                            className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                            className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
                             value={createPassword}
                             onChange={e => setCreatePassword(e.target.value)}
                             placeholder="Digite a senha..."
@@ -305,18 +305,18 @@ export default function TecnicosManager() {
                     </div>
                   )}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text-muted uppercase">CT Base</label>
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">CT Base</label>
                     <input 
                       type="text" 
-                      className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
                       value={formData.ctBase || ''}
                       onChange={e => setFormData({...formData, ctBase: e.target.value})}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Perfil (Role)</label>
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Perfil (Role)</label>
                     <select 
-                      className="w-full bg-surface border border-border rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-accent-teal"
+                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
                       value={formData.role || 'PADRAO'}
                       onChange={e => setFormData({...formData, role: e.target.value})}
                     >
@@ -329,22 +329,22 @@ export default function TecnicosManager() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="checkbox" 
-                        className="w-4 h-4 rounded bg-surface border-border text-accent-teal focus:ring-accent-teal"
+                        className="w-4 h-4 rounded bg-slate-50 dark:bg-surface border-light-borderStrong dark:border-border text-accent-teal focus:ring-accent-teal"
                         checked={formData.ativo || false}
                         onChange={e => setFormData({...formData, ativo: e.target.checked})}
                       />
-                      <span className="text-sm font-semibold text-slate-300">Usuário Ativo no Sistema</span>
+                      <span className="text-sm font-semibold text-light-text-main dark:text-slate-300">Usuário Ativo no Sistema</span>
                     </label>
                   </div>
                 </div>
                 {error && <p className="text-sm text-rose-400 font-semibold">{error}</p>}
               </div>
 
-              <div className="p-6 border-t border-border bg-[#162032] flex justify-end gap-3">
+              <div className="p-6 border-t border-light-borderStrong dark:border-border bg-slate-100 dark:bg-[#162032] flex justify-end gap-3">
                 <button 
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-2 rounded-xl text-slate-300 font-semibold hover:bg-surface transition-colors"
+                  className="px-5 py-2 rounded-xl text-light-text-secondary dark:text-slate-300 font-semibold hover:bg-slate-200 dark:hover:bg-surface transition-colors"
                 >
                   Cancelar
                 </button>

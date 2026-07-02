@@ -37,6 +37,9 @@ public class Tecnico implements UserDetails {
     @Column(name = "cargo")
     private String cargo;
 
+    @Column(name = "id_supervisor")
+    private Integer idSupervisor;
+
     @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "senha")
     private String senha;

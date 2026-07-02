@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # --- SERVIÇO DO BACKEND (SPRING BOOT - MODO DEV) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: brilhamais_backend_dev
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mapeia o código fonte para dentro do container
+      - ./backend:/app
+      # Protege a pasta .m2 do maven usando um volume gerenciado para não baixar a internet inteira toda vez
+      - maven_cache:/root/.m2
+    env_file:
+      - .env
+    environment:
+      # Conecta diretamente no banco de produção
+      - SPRING_PROFILES_ACTIVE=dev
+    networks:
+      - brilhamais_dev_network
+
+  # --- SERVIÇO DO FRONTEND (REACT VITE - MODO DEV) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: brilhamais_frontend_dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mapeia os arquivos do frontend para hot reload
+      - ./frontend:/app
+      # Impede que o volume do host sobrescreva o node_modules interno do container
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      # Força o frontend a acessar o backend local no Docker
+      - VITE_API_URL=http://localhost:8080/api/v1
+    depends_on:
+      - backend
+    networks:
+      - brilhamais_dev_network
+
+volumes:
+  maven_cache:
+
+networks:
+  brilhamais_dev_network:
+    driver: bridge

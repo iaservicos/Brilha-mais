@@ -57,53 +57,98 @@ public class MotorCalculoService {
     }
 
     private void processarTecnico(Tecnico tecnico, LocalDate dataInicioCampanha, LocalDate dataFimCampanha) {
-        // Mês 1
-        LocalDate m1Inicio = dataInicioCampanha.withDayOfMonth(1);
-        LocalDate m1Fim = dataFimCampanha.isBefore(m1Inicio.withDayOfMonth(m1Inicio.lengthOfMonth())) ? dataFimCampanha : m1Inicio.withDayOfMonth(m1Inicio.lengthOfMonth());
-        ApuracaoMensal ap1 = calcularParaPeriodo(tecnico, m1Inicio, m1Fim, m1Inicio);
+        java.util.List<ApuracaoMensal> apuracoesMensais = new java.util.ArrayList<>();
+        java.util.Set<LocalDate> datasValidas = new java.util.HashSet<>();
+        LocalDate currentDate = dataInicioCampanha.withDayOfMonth(1);
         
-        // Mês 2
-        LocalDate m2Inicio = m1Fim.plusDays(1).withDayOfMonth(1);
-        if (m2Inicio.isAfter(dataFimCampanha)) return;
+        while (!currentDate.isAfter(dataFimCampanha)) {
+            LocalDate mInicio = currentDate;
+            LocalDate endOfMonth = currentDate.withDayOfMonth(currentDate.lengthOfMonth());
+            LocalDate mFim = dataFimCampanha.isBefore(endOfMonth) ? dataFimCampanha : endOfMonth;
+            
+            datasValidas.add(mInicio);
+            
+            ApuracaoMensal ap = calcularParaPeriodo(tecnico, mInicio, mFim, mInicio);
+            apuracoesMensais.add(ap);
+            
+            currentDate = currentDate.plusMonths(1);
+        }
         
-        LocalDate m2Fim = dataFimCampanha.isBefore(m2Inicio.withDayOfMonth(m2Inicio.lengthOfMonth())) ? dataFimCampanha : m2Inicio.withDayOfMonth(m2Inicio.lengthOfMonth());
-        ApuracaoMensal ap2 = calcularParaPeriodo(tecnico, m2Inicio, m2Fim, m2Inicio);
+        if (apuracoesMensais.isEmpty()) return;
+
+        datasValidas.add(dataFimCampanha);
+
+        // --- Limpeza de resíduos de configurações de campanhas antigas (Self-Healing) ---
+        java.util.List<ApuracaoMensal> apuracoesBanco = apuracaoRepository
+            .findByTecnicoIdTecnicoAndMesAnoBetween(tecnico.getIdTecnico(), dataInicioCampanha, dataFimCampanha);
+            
+        java.util.List<ApuracaoMensal> apuracoesLixo = apuracoesBanco.stream()
+            .filter(ap -> !datasValidas.contains(ap.getMesAno()))
+            .toList();
+            
+        if (!apuracoesLixo.isEmpty()) {
+            apuracaoRepository.deleteAll(apuracoesLixo);
+        }
+        // --------------------------------------------------------------------------------
 
         // Média Geral
         ApuracaoMensal apFinal = apuracaoRepository
             .findFirstByTecnicoIdTecnicoAndMesAno(tecnico.getIdTecnico(), dataFimCampanha)
             .orElse(ApuracaoMensal.builder().tecnico(tecnico).mesAno(dataFimCampanha).build());
-                    
-        apFinal.setAtingimentoSla(calcularMedia(ap1.getAtingimentoSla(), ap2.getAtingimentoSla()));
-        apFinal.setPontosSla((ap1.getPontosSla() + ap2.getPontosSla()) / 2.0);
+            
+        int size = apuracoesMensais.size();
         
-        apFinal.setAtingimentoReincidencia(calcularMedia(ap1.getAtingimentoReincidencia(), ap2.getAtingimentoReincidencia()));
-        apFinal.setPontosReincidencia((ap1.getPontosReincidencia() + ap2.getPontosReincidencia()) / 2.0);
-        
-        apFinal.setAtingimentoReincidenciaEquipe(calcularMedia(ap1.getAtingimentoReincidenciaEquipe(), ap2.getAtingimentoReincidenciaEquipe()));
-        apFinal.setPontosReincidenciaEquipe((ap1.getPontosReincidenciaEquipe() + ap2.getPontosReincidenciaEquipe()) / 2.0);
-        
-        apFinal.setAtingimentoPecas(calcularMedia(ap1.getAtingimentoPecas(), ap2.getAtingimentoPecas()));
-        apFinal.setPontosPecas((ap1.getPontosPecas() + ap2.getPontosPecas()) / 2.0);
-        
-        apFinal.setAtingimentoNps(calcularMedia(ap1.getAtingimentoNps(), ap2.getAtingimentoNps()));
-        apFinal.setPontosNps((ap1.getPontosNps() + ap2.getPontosNps()) / 2.0);
-        
-        apFinal.setAtingimentoPerdidos(calcularMedia(ap1.getAtingimentoPerdidos(), ap2.getAtingimentoPerdidos()));
-        apFinal.setPontosPerdidos((ap1.getPontosPerdidos() + ap2.getPontosPerdidos()) / 2.0);
-        
-        apFinal.setPontuacaoTotal(calcularMedia(ap1.getPontuacaoTotal(), ap2.getPontuacaoTotal()));
-        apFinal.setTotalChamados(ap1.getTotalChamados() + ap2.getTotalChamados());
-        
-        if (!ap1.getStatusElegibilidade()) {
-            apFinal.setStatusElegibilidade(false);
-            apFinal.setMotivoInelegibilidade("Inelegível no Mês 1: " + ap1.getMotivoInelegibilidade());
-        } else if (!ap2.getStatusElegibilidade()) {
-            apFinal.setStatusElegibilidade(false);
-            apFinal.setMotivoInelegibilidade("Inelegível no Mês 2: " + ap2.getMotivoInelegibilidade());
+        if (size == 1) {
+            ApuracaoMensal ap1 = apuracoesMensais.get(0);
+            apFinal.setAtingimentoSla(ap1.getAtingimentoSla());
+            apFinal.setPontosSla(ap1.getPontosSla());
+            apFinal.setAtingimentoReincidencia(ap1.getAtingimentoReincidencia());
+            apFinal.setPontosReincidencia(ap1.getPontosReincidencia());
+            apFinal.setAtingimentoReincidenciaEquipe(ap1.getAtingimentoReincidenciaEquipe());
+            apFinal.setPontosReincidenciaEquipe(ap1.getPontosReincidenciaEquipe());
+            apFinal.setAtingimentoPecas(ap1.getAtingimentoPecas());
+            apFinal.setPontosPecas(ap1.getPontosPecas());
+            apFinal.setAtingimentoNps(ap1.getAtingimentoNps());
+            apFinal.setPontosNps(ap1.getPontosNps());
+            apFinal.setAtingimentoPerdidos(ap1.getAtingimentoPerdidos());
+            apFinal.setPontosPerdidos(ap1.getPontosPerdidos());
+            apFinal.setPontuacaoTotal(ap1.getPontuacaoTotal());
+            apFinal.setTotalChamados(ap1.getTotalChamados());
+            apFinal.setStatusElegibilidade(ap1.getStatusElegibilidade());
+            apFinal.setMotivoInelegibilidade(ap1.getMotivoInelegibilidade());
         } else {
-            apFinal.setStatusElegibilidade(true);
-            apFinal.setMotivoInelegibilidade(null);
+            apFinal.setAtingimentoSla(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoSla).toList()));
+            apFinal.setPontosSla(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosSla).sum() / size);
+            
+            apFinal.setAtingimentoReincidencia(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoReincidencia).toList()));
+            apFinal.setPontosReincidencia(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosReincidencia).sum() / size);
+            
+            apFinal.setAtingimentoReincidenciaEquipe(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoReincidenciaEquipe).toList()));
+            apFinal.setPontosReincidenciaEquipe(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosReincidenciaEquipe).sum() / size);
+            
+            apFinal.setAtingimentoPecas(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoPecas).toList()));
+            apFinal.setPontosPecas(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosPecas).sum() / size);
+            
+            apFinal.setAtingimentoNps(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoNps).toList()));
+            apFinal.setPontosNps(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosNps).sum() / size);
+            
+            apFinal.setAtingimentoPerdidos(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoPerdidos).toList()));
+            apFinal.setPontosPerdidos(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosPerdidos).sum() / size);
+            
+            apFinal.setPontuacaoTotal(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getPontuacaoTotal).toList()));
+            apFinal.setTotalChamados(apuracoesMensais.stream().mapToInt(ApuracaoMensal::getTotalChamados).sum());
+            
+            boolean elegivel = true;
+            String motivo = null;
+            for (int i = 0; i < size; i++) {
+                if (!apuracoesMensais.get(i).getStatusElegibilidade()) {
+                    elegivel = false;
+                    motivo = "Inelegível no Mês " + (i+1) + ": " + apuracoesMensais.get(i).getMotivoInelegibilidade();
+                    break;
+                }
+            }
+            apFinal.setStatusElegibilidade(elegivel);
+            apFinal.setMotivoInelegibilidade(motivo);
         }
         
         apFinal.setDataCalculo(LocalDateTime.now());
@@ -175,7 +220,9 @@ public class MotorCalculoService {
         return apuracaoRepository.save(apuracao);
     }
 
-    private BigDecimal calcularMedia(BigDecimal v1, BigDecimal v2) {
-        return v1.add(v2).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+    private BigDecimal calcularMedia(java.util.List<BigDecimal> valores) {
+        if (valores == null || valores.isEmpty()) return BigDecimal.ZERO;
+        BigDecimal sum = valores.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sum.divide(BigDecimal.valueOf(valores.size()), 4, RoundingMode.HALF_UP);
     }
 }

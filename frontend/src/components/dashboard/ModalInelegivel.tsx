@@ -37,7 +37,7 @@ export const ModalInelegivel: React.FC<ModalInelegivelProps> = ({
           </div>
         </div>
 
-        <button onClick={onClose} className="mt-8 w-full bg-surface hover:bg-background text-text-main py-4 rounded-xl font-bold text-lg transition-colors shadow-lg">
+        <button onClick={onClose} className="mt-8 w-full bg-slate-100 dark:bg-surface hover:bg-slate-200 dark:hover:bg-background text-light-text-main dark:text-text-main py-4 rounded-xl font-bold text-lg transition-colors shadow-lg">
           Vou melhorar!
         </button>
       </div>

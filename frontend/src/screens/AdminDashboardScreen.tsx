@@ -5,8 +5,8 @@ import { api } from '../services/api';
 import { CircularProgress } from '../components/ui/CircularProgress';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import ChamadosHistoryCard from '../components/dashboard/ChamadosHistoryCard';
-import basesData from '../utils/bases_atp.json';
-
+import { TecnicoMetricsUI } from '../components/dashboard/TecnicoMetricsUI';
+import { useTecnicoMetrics } from '../hooks/useTecnicoMetrics';
 export default function AdminDashboardScreen() {
   const { user } = useAuthStore();
   
@@ -15,6 +15,8 @@ export default function AdminDashboardScreen() {
 
   const [rankingOriginal, setRankingOriginal] = useState<any[]>([]);
   const [todosTecnicos, setTodosTecnicos] = useState<any[]>([]);
+  const [todosSupervisores, setTodosSupervisores] = useState<any[]>([]);
+  const [todasBases, setTodasBases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -32,14 +34,18 @@ export default function AdminDashboardScreen() {
       try {
         setLoading(true);
         // Busca a arvore completa de funcionarios e os resultados do ranking simultaneamente
-        const [rankingResp, tecnicosResp] = await Promise.all([
+        const [rankingResp, tecnicosResp, supResp, basesResp] = await Promise.all([
           api.get('/dashboard/ranking'),
-          api.get('/tecnicos')
+          api.get('/tecnicos'),
+          api.get('/supervisores'),
+          api.get('/bases')
         ]);
         
         if (mounted) {
           if (rankingResp.data) setRankingOriginal(rankingResp.data);
           if (tecnicosResp.data) setTodosTecnicos(tecnicosResp.data);
+          if (supResp.data) setTodosSupervisores(supResp.data);
+          if (basesResp.data) setTodasBases(basesResp.data);
         }
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error);
@@ -77,41 +83,35 @@ export default function AdminDashboardScreen() {
 
   // 1. Lógica de Supervisores
   const listaSupervisores = useMemo(() => {
-    return todosTecnicos.filter(t => {
-      const r = (t.role || '').toUpperCase();
-      return r.includes('ADMIN') || r.includes('SUPERVISOR');
-    });
-  }, [todosTecnicos]);
+    return todosSupervisores.sort((a, b) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''));
+  }, [todosSupervisores]);
 
   // Se for Moderador, escolhe qualquer um. Se for Admin, crava nele mesmo.
   const supervisorEfetivo = isModerador ? selectedSupervisor : (user?.matricula || 'none');
 
+  // Recupera o ID do supervisor efetivo para filtrar as bases
+  const supervisorEfetivoId = useMemo(() => {
+    if (supervisorEfetivo === 'all') return 'all';
+    const sup = listaSupervisores.find(s => s.matricula === supervisorEfetivo || s.idSupervisor?.toString() === supervisorEfetivo);
+    return sup ? sup.idSupervisor : 'all';
+  }, [supervisorEfetivo, listaSupervisores]);
+
   // 2. Lógica de Equipes (Base ATP)
   const equipesDisponiveis = useMemo(() => {
-    const equipes = new Set<string>();
-    
-    if (supervisorEfetivo === 'all') {
-      // Moderador vendo todos os supervisores = vê todas as bases
-      todosTecnicos.forEach(t => {
-        if (t.ctBase) {
-          t.ctBase.split(',').forEach((b: string) => equipes.add(b.trim()));
-        }
-      });
-    } else {
-      // Pega as bases do supervisor selecionado
-      const supervisor = listaSupervisores.find(s => s.matricula === supervisorEfetivo);
-      if (supervisor && supervisor.ctBase) {
-        supervisor.ctBase.split(',').forEach((b: string) => equipes.add(b.trim()));
-      }
+    let filtradas = todasBases;
+    if (supervisorEfetivoId !== 'all') {
+      filtradas = todasBases.filter(b => b.idSupervisor === supervisorEfetivoId);
     }
-    
-    return Array.from(equipes).filter(e => e.length > 0).sort();
-  }, [todosTecnicos, listaSupervisores, supervisorEfetivo]);
+    return filtradas.sort((a, b) => (a.nomeAtp || '').localeCompare(b.nomeAtp || ''));
+  }, [todasBases, supervisorEfetivoId]);
 
   // Se a base selecionada não estiver na lista (ex: mudou de supervisor), reseta
   useEffect(() => {
-    if (selectedEquipe !== 'all' && !equipesDisponiveis.includes(selectedEquipe)) {
-      setSelectedEquipe('all');
+    if (selectedEquipe !== 'all') {
+      const baseAindaVisivel = equipesDisponiveis.find(b => b.ctCodigo === selectedEquipe);
+      if (!baseAindaVisivel) {
+        setSelectedEquipe('all');
+      }
     }
   }, [equipesDisponiveis, selectedEquipe]);
 
@@ -123,74 +123,37 @@ export default function AdminDashboardScreen() {
       return r.includes('PADRAO') || r.includes('TECNICO') || r === '';
     });
     
-    // Filtra pelas bases permitidas (do supervisor atual)
+    // Filtra pelas bases permitidas
     if (selectedEquipe !== 'all') {
       lista = lista.filter(t => t.ctBase === selectedEquipe);
     } else {
-      // Se "Todas as equipes", mas tem um supervisor selecionado, filtra apenas tecnicos das bases dele
-      if (supervisorEfetivo !== 'all') {
-         lista = lista.filter(t => t.ctBase && equipesDisponiveis.includes(t.ctBase));
+      // Se "Todas as bases", mas tem um supervisor selecionado
+      if (supervisorEfetivoId !== 'all') {
+         lista = lista.filter(t => t.idSupervisor === supervisorEfetivoId);
       }
     }
     return lista.sort((a, b) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''));
-  }, [todosTecnicos, selectedEquipe, supervisorEfetivo, equipesDisponiveis]);
+  }, [todosTecnicos, selectedEquipe, supervisorEfetivoId]);
 
   // Se o técnico selecionado não estiver na lista atual, reseta
   useEffect(() => {
     if (selectedTecnicoIdentifier !== 'all') {
-      const tecnicoAindaVisivel = tecnicosVisiveis.find(t => t.matricula === selectedTecnicoIdentifier);
+      const tecnicoAindaVisivel = tecnicosVisiveis.find(t => 
+        (t.matricula && t.matricula === selectedTecnicoIdentifier) || 
+        t.idTecnico?.toString() === selectedTecnicoIdentifier
+      );
       if (!tecnicoAindaVisivel) {
         setSelectedTecnicoIdentifier('all');
       }
     }
   }, [tecnicosVisiveis, selectedTecnicoIdentifier]);
 
-  // 4. Técnico Selecionado (Cruza os dados com o ranking)
-  const metricas = useMemo(() => {
-    if (selectedTecnicoIdentifier === 'all') return null;
-    
-    // Procura o técnico selecionado na lista bruta
-    const tecnicoInfo = tecnicosVisiveis.find(t => t.matricula === selectedTecnicoIdentifier);
-    if (!tecnicoInfo) return null;
-    
-    // Procura os resultados dele no motor de calculo
-    const rankingData = rankingOriginal.find(r => r.matricula === selectedTecnicoIdentifier);
-    
-    // Se não tiver dados no ranking (ex: mes vazio ou novo tecnico), retorna um stub zerado
-    if (!rankingData) {
-      return {
-         idTecnico: tecnicoInfo.idTecnico,
-         tecnico: tecnicoInfo.nomeCompleto,
-         matricula: tecnicoInfo.matricula,
-         localEquipe: tecnicoInfo.ctBase,
-         pontosTotal: 0,
-         percentualSla: 0,
-         pontosSla: 0,
-         percentualReincidencia: 0,
-         pontosReincidencia: 0,
-         quantidadeProdutividade: 0,
-         pontosProdutividade: 0,
-         percentualEficienciaPecas: 0,
-         pontosPecas: 0,
-         npsScore: 0,
-         pontosNps: 0,
-         elegivel: false,
-         motivoInelegibilidade: 'Nenhum resultado processado para o mês',
-         historico: []
-      };
-    }
-    
-    return rankingData;
-  }, [tecnicosVisiveis, selectedTecnicoIdentifier, rankingOriginal]);
-
-  // Aplicação do mês para o técnico selecionado (Drilldown)
-  const displayMetricas = useMemo(() => {
-    if (!metricas) return null;
-    if (selectedMonth === 'Média Final') return metricas;
-    const monthData = metricas.historico?.find((h: any) => h.mes === selectedMonth);
-    if (!monthData) return metricas;
-    return { ...metricas, ...monthData };
-  }, [metricas, selectedMonth]);
+  const { metricas, displayMetricas } = useTecnicoMetrics(
+    rankingOriginal,
+    tecnicosVisiveis,
+    selectedTecnicoIdentifier,
+    selectedMonth
+  );
 
   // 5. Resumo da Equipe (Team Dashboard)
   const teamSummary = useMemo(() => {
@@ -219,12 +182,7 @@ export default function AdminDashboardScreen() {
     );
   }
 
-  // Variáveis para o Gráfico de Consumo (Reaproveitado do DashboardScreen)
-  const percentualConsumo = displayMetricas?.percentualEficienciaPecas || 0;
-  const eficienciaData = [
-    { name: 'Consumo', value: percentualConsumo },
-    { name: 'Restante', value: Math.max(100 - percentualConsumo, 0) },
-  ];
+
 
   return (
     <div className="space-y-6 pb-6 mt-16 md:mt-24 px-4 md:px-8">
@@ -262,7 +220,7 @@ export default function AdminDashboardScreen() {
             >
               {isModerador && <option value="all">Todos os Supervisores</option>}
               {listaSupervisores.map(s => (
-                <option key={s.matricula} value={s.matricula}>{s.nomeCompleto}</option>
+                <option key={s.idSupervisor} value={s.matricula || s.idSupervisor?.toString()}>{s.nomeCompleto}</option>
               ))}
             </select>
           </div>
@@ -276,9 +234,9 @@ export default function AdminDashboardScreen() {
               className="w-full lg:w-64 bg-slate-50 dark:bg-background border border-light-borderStrong dark:border-border text-light-text-main dark:text-text-main text-sm rounded-positivo-md focus:ring-accent-teal focus:border-accent-teal p-2.5 outline-none transition-shadow"
             >
               <option value="all">Todas as Bases</option>
-              {equipesDisponiveis.map(eq => {
-                const baseInfo = basesData.find((b: any) => b.ct_codigo === eq);
-                const label = baseInfo ? `${eq} - ${baseInfo.nome_atp || ''} (${baseInfo.uf || ''})` : eq;
+              {equipesDisponiveis.map(base => {
+                const eq = base.ctCodigo;
+                const label = base.nomeAtp ? `${eq} - ${base.nomeAtp} (${base.uf || ''})` : eq;
                 return <option key={eq} value={eq}>{label}</option>
               })}
             </select>
@@ -294,10 +252,10 @@ export default function AdminDashboardScreen() {
             >
               <option value="all">-- Visão da Equipe --</option>
               {tecnicosVisiveis.map(t => {
-                const id = t.matricula;
+                const optionValue = t.matricula || t.idTecnico?.toString();
                 const matText = t.matricula ? `(${t.matricula})` : '';
                 return (
-                  <option key={id} value={id}>
+                  <option key={t.idTecnico} value={optionValue}>
                     {t.nomeCompleto} {matText}
                   </option>
                 );
@@ -341,147 +299,13 @@ export default function AdminDashboardScreen() {
 
       {/* JSDoc: Visão Individual (Drill-down) que simula o DashboardScreen para manter identidade visual */}
       {selectedTecnicoIdentifier !== 'all' && displayMetricas && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          
-          <div className="flex flex-col md:flex-row justify-between items-center bg-light-background dark:bg-background/50 p-4 rounded-positivo-lg border border-light-borderStrong dark:border-border/30">
-            <div>
-              <h2 className="text-xl font-bold text-light-text-main dark:text-text-main">{displayMetricas.tecnico}</h2>
-              <p className="text-sm text-light-text-muted dark:text-text-muted">Matrícula: {displayMetricas.matricula} | Base: {displayMetricas.localEquipe || 'N/A'}</p>
-            </div>
-            <div className="flex items-center gap-3 mt-4 md:mt-0">
-               {displayMetricas.elegivel ? (
-                 <span className="flex items-center space-x-1 text-accent-emerald text-sm font-medium bg-accent-emerald/10 px-3 py-1.5 rounded-full">
-                   <CheckCircle2 size={16} /><span>Elegível</span>
-                 </span>
-               ) : (
-                 <span className="flex items-center space-x-1 text-status-danger text-sm font-medium bg-status-danger/10 px-3 py-1.5 rounded-full">
-                   <XCircle size={16} /><span>Não Elegível</span>
-                 </span>
-               )}
-               {displayMetricas.posicaoRanking && displayMetricas.posicaoRanking !== '--' && (
-                 <span className="flex items-center space-x-1 text-light-text-main dark:text-text-main text-sm font-bold bg-brilhamais-gold/20 px-3 py-1.5 rounded-full">
-                   <Medal size={16} className="text-brilhamais-gold" /><span>{displayMetricas.posicaoRanking}º Lugar</span>
-                 </span>
-               )}
-            </div>
-          </div>
-
-          {/* Seletor de Mês (Segmented Control) */}
-          {metricas?.historico && metricas.historico.length > 0 && (
-            <div className="flex justify-center mt-2 mb-4">
-              <div className="inline-flex bg-slate-100 dark:bg-background/80 p-1.5 rounded-full border border-light-borderStrong dark:border-border/50 shadow-inner overflow-x-auto max-w-full scrollbar-hide">
-                {['Média Final', ...metricas.historico.map((h: any) => h.mes).filter((m: string) => m !== 'Média Final')].map((monthOption: string) => (
-                  <button
-                    key={monthOption}
-                    onClick={() => setSelectedMonth(monthOption)}
-                    className={`px-5 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap ${
-                      selectedMonth === monthOption
-                        ? 'bg-white dark:bg-surface text-accent-teal shadow-md ring-1 ring-black/5 dark:ring-white/10 scale-105'
-                        : 'text-light-text-muted dark:text-text-muted hover:text-light-text-main dark:hover:text-text-main hover:bg-white/50 dark:hover:bg-surface/50'
-                    }`}
-                  >
-                    {monthOption}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Grid de Cards (Idêntico ao DashboardScreen) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <CheckCircle2 size={48} className="text-accent-emerald" />
-              </div>
-              <h3 className="text-sm font-medium text-light-text-muted dark:text-text-muted mb-4">SLA (No Prazo)</h3>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-light-text-main dark:text-text-main">{displayMetricas.percentualSla?.toFixed(1) || 0}%</p>
-                  <p className="text-sm font-medium text-accent-emerald mt-1">+{displayMetricas.pontosSla?.toFixed(1) || 0} pts</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border relative overflow-hidden group">
-              <h3 className="text-sm font-medium text-light-text-muted dark:text-text-muted mb-4">Reincidência</h3>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-light-text-main dark:text-text-main">{displayMetricas.percentualReincidencia?.toFixed(1) || 0}%</p>
-                  <p className="text-sm font-medium text-brilhamais-gold mt-1">+{displayMetricas.pontosReincidencia?.toFixed(1) || 0} pts</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border relative overflow-hidden group">
-              <h3 className="text-sm font-medium text-light-text-muted dark:text-text-muted mb-4">Produtividade</h3>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-light-text-main dark:text-text-main">{displayMetricas.quantidadeProdutividade || 0}</p>
-                  <p className="text-sm font-medium text-accent-teal mt-1">+{displayMetricas.pontosProdutividade?.toFixed(1) || 0} pts</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border relative overflow-hidden group">
-              <h3 className="text-sm font-medium text-light-text-muted dark:text-text-muted mb-4">NPS</h3>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-light-text-main dark:text-text-main">{displayMetricas.npsScore?.toFixed(1) || 0}%</p>
-                  <p className="text-sm font-medium text-accent-emerald mt-1">+{displayMetricas.pontosNps?.toFixed(1) || 0} pts</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-light-text-main dark:text-text-main">Pontuação Total</h3>
-              </div>
-              <div className="flex justify-center my-4">
-                <CircularProgress 
-                  value={displayMetricas.pontosTotal || 0} 
-                  maxValue={100} 
-                  size={200}
-                  color={
-                    (displayMetricas.pontosTotal || 0) >= 90 ? 'text-brilhamais-gold' : 
-                    (displayMetricas.pontosTotal || 0) >= 70 ? 'text-accent-teal' : 'text-status-warning'
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <h3 className="text-lg font-bold text-light-text-main dark:text-text-main mb-6">Eficiência de Peças</h3>
-              <div className="h-48 relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={eficienciaData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      <Cell fill="#00d8a6" />
-                      <Cell fill="#1e293b" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <span className="text-2xl font-bold text-light-text-main dark:text-text-main">{percentualConsumo.toFixed(1)}%</span>
-                  <span className="text-xs text-light-text-muted dark:text-text-muted">Atingimento</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8">
-             <ChamadosHistoryCard tecnicoId={displayMetricas.idTecnico} />
-          </div>
+        <div className="mt-8 pt-8 border-t border-light-borderStrong dark:border-border/50">
+          <TecnicoMetricsUI
+            metricas={metricas}
+            displayMetricas={displayMetricas}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+          />
         </div>
       )}
     </div>

@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface ApuracaoMensalRepository extends JpaRepository<ApuracaoMensal, Integer> {
     Optional<ApuracaoMensal> findFirstByTecnicoIdTecnicoAndMesAno(Integer idTecnico, LocalDate mesAno);
     
+    List<ApuracaoMensal> findByTecnicoIdTecnicoAndMesAnoBetween(Integer idTecnico, LocalDate dataInicio, LocalDate dataFim);
+    
     @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t WHERE a.mesAno = :mesAno ORDER BY a.pontuacaoTotal DESC")
     List<ApuracaoMensal> findRankingByMesAno(LocalDate mesAno);
     

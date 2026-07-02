@@ -91,7 +91,7 @@ export const ModalDetalhesPontuacao: React.FC<ModalDetalhesPontuacaoProps> = ({
           </table>
         </div>
         <div className="p-4 bg-light-background dark:bg-background/80 border-t border-light-borderStrong dark:border-border flex justify-end">
-          <button onClick={onClose} className="bg-surface hover:bg-background text-text-main px-6 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg focus:ring-2 focus:ring-slate-400 focus:outline-none">
+          <button onClick={onClose} className="bg-slate-200 dark:bg-surface hover:bg-slate-300 dark:hover:bg-background text-light-text-main dark:text-text-main px-6 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg focus:ring-2 focus:ring-slate-400 focus:outline-none">
             Fechar
           </button>
         </div>

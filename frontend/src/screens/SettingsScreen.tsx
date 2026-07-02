@@ -26,7 +26,7 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
   };
 
   return (
-    <div className="bg-[#1e293b] rounded-2xl p-6 border border-border flex flex-col h-full shadow-lg relative overflow-hidden group hover:border-accent-teal/30 transition-all">
+    <div className="bg-light-surface dark:bg-[#1e293b] rounded-2xl p-6 border border-light-borderStrong dark:border-border flex flex-col h-full shadow-lg relative overflow-hidden group hover:border-accent-teal/30 transition-all">
       <div className="flex items-start justify-between mb-4">
         <div className="p-3 bg-accent-teal/10 text-accent-teal rounded-xl">
           <FileSpreadsheet size={24} />
@@ -36,8 +36,8 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
         {status === 'uploading' && <Loader2 className="text-accent-teal animate-spin" size={24} />}
       </div>
       
-      <h3 className="text-lg font-bold text-text-main mb-1">{title}</h3>
-      <p className="text-sm text-text-muted mb-6 flex-grow">{description}</p>
+      <h3 className="text-lg font-bold text-light-text-main dark:text-text-main mb-1">{title}</h3>
+      <p className="text-sm text-light-text-muted dark:text-text-muted mb-6 flex-grow">{description}</p>
 
       <div className="relative">
         <input 
@@ -52,8 +52,8 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
           htmlFor={`upload-${type}`}
           className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all border ${
             status === 'uploading' 
-              ? 'bg-surface text-text-muted border-border' 
-              : 'bg-[#0f172a] text-slate-300 border-border group-hover:bg-accent-teal/10 group-hover:text-accent-teal group-hover:border-accent-teal/30'
+              ? 'bg-slate-100 dark:bg-surface text-light-text-muted dark:text-text-muted border-light-borderStrong dark:border-border' 
+              : 'bg-slate-50 dark:bg-[#0f172a] text-light-text-secondary dark:text-slate-300 border-light-borderStrong dark:border-border group-hover:bg-accent-teal/10 group-hover:text-accent-teal group-hover:border-accent-teal/30'
           }`}
         >
           <UploadCloud size={18} />
@@ -67,7 +67,7 @@ const UploadCard = ({ type, title, description, onUpload, status, message, progr
             <span className="text-accent-teal">{message || (progress === 100 ? 'Iniciando processamento...' : 'Enviando arquivo...')}</span>
             <span className="text-text-muted">{progress}%</span>
           </div>
-          <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-slate-200 dark:bg-surface rounded-full h-1.5 overflow-hidden">
             <div 
               className={`h-1.5 rounded-full transition-all duration-300 ${progress === 100 && !message?.includes('inserindo') ? 'bg-accent-teal animate-pulse' : 'bg-accent-teal'}`} 
               style={{ width: `${progress}%` }}
@@ -171,34 +171,34 @@ export default function SettingsScreen() {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-12">
-      <div className="bg-[#1e293b]/50 backdrop-blur-md rounded-3xl p-8 border border-border shadow-2xl relative overflow-hidden">
+      <div className="bg-light-surface/90 dark:bg-[#1e293b]/50 backdrop-blur-md rounded-3xl p-8 border border-light-borderStrong dark:border-border shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-teal/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         
-        <h1 className="text-3xl md:text-4xl font-black text-text-main mb-2 tracking-tight">
+        <h1 className="text-3xl md:text-4xl font-black text-light-text-main dark:text-text-main mb-2 tracking-tight">
           Painel do <span className="text-accent-teal">Moderador</span>
         </h1>
-        <p className="text-text-muted text-sm md:text-base max-w-2xl mb-8">
+        <p className="text-light-text-secondary dark:text-text-muted text-sm md:text-base max-w-2xl mb-8">
           Gerencie a base de dados do sistema Brilha+, atualize as equipes e inicie novos ciclos de campanha mensais.
         </p>
 
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveTab('UPLOADS')}
-            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'UPLOADS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'UPLOADS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-slate-200 dark:bg-surface text-light-text-muted dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-surface/80 hover:text-light-text-main dark:hover:text-slate-200'}`}
           >
             <UploadCloud size={20} />
             Ingestão de Dados
           </button>
           <button
             onClick={() => setActiveTab('TECNICOS')}
-            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'TECNICOS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'TECNICOS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-slate-200 dark:bg-surface text-light-text-muted dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-surface/80 hover:text-light-text-main dark:hover:text-slate-200'}`}
           >
             <Users size={20} />
             Gestão de Técnicos
           </button>
           <button
             onClick={() => setActiveTab('CAMPANHA')}
-            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'CAMPANHA' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-surface text-slate-400 hover:bg-surface/80 hover:text-slate-200'}`}
+            className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'CAMPANHA' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-slate-200 dark:bg-surface text-light-text-muted dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-surface/80 hover:text-light-text-main dark:hover:text-slate-200'}`}
           >
             <DatabaseZap size={20} />
             Campanha Ativa
@@ -209,7 +209,7 @@ export default function SettingsScreen() {
       <div className="pt-2">
         {activeTab === 'UPLOADS' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-light-text-main dark:text-text-main mb-6 flex items-center gap-2">
               <UploadCloud className="text-accent-teal" size={24} />
               Ingestão Dinâmica de Planilhas
             </h2>
