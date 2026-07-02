@@ -127,7 +127,7 @@ export default function LoginScreen() {
       <div className="flex flex-col items-center">
         <div className="logo-container flex items-center justify-center relative pt-2 pb-2">
           <div className="glow-ring"></div>
-          <h1 className="text-5xl font-black tracking-tighter text-light-text-main dark:text-slate-50 flex items-baseline relative z-10 uppercase" style={{ fontFamily: "'Arial Black', Impact, sans-serif", letterSpacing: "-0.05em" }}>
+          <h1 className="text-5xl font-black tracking-tighter text-slate-50 flex items-baseline relative z-10 uppercase" style={{ fontFamily: "'Arial Black', Impact, sans-serif", letterSpacing: "-0.05em" }}>
             Brilha<span className="text-6xl plus-sign neon-glow ml-1 leading-none text-accent-teal">+</span>
           </h1>
         </div>
@@ -155,7 +155,7 @@ export default function LoginScreen() {
               type="text"
               required
               autoComplete="username"
-              className="dark-autofill w-full bg-slate-50 dark:bg-[#0f172a] border border-light-borderStrong dark:border-[#1e293b] text-light-text-main dark:text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-light-text-muted dark:placeholder:text-text-muted text-sm shadow-inner"
+              className="dark-autofill w-full bg-[#0f172a] border border-[#1e293b] text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-text-muted text-sm shadow-inner"
               placeholder="Matrícula"
             />
           </div>
@@ -167,7 +167,7 @@ export default function LoginScreen() {
               type="password"
               required
               autoComplete="current-password"
-              className="dark-autofill w-full bg-slate-50 dark:bg-[#0f172a] border border-light-borderStrong dark:border-[#1e293b] text-light-text-main dark:text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-light-text-muted dark:placeholder:text-text-muted text-sm shadow-inner"
+              className="dark-autofill w-full bg-[#0f172a] border border-[#1e293b] text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-text-muted text-sm shadow-inner"
               placeholder="Senha"
             />
           </div>
@@ -204,7 +204,7 @@ export default function LoginScreen() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-grid-pattern">
           <div className="w-full max-w-md z-10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-light-surface dark:bg-[#1e293b] p-8 rounded-2xl shadow-2xl border border-light-borderStrong dark:border-border">
+            <div className="bg-[#1e293b] p-8 rounded-2xl shadow-2xl border border-border">
 
               <div className="flex items-center justify-center mb-6">
                 <div className="w-14 h-14 bg-accent-teal/5 text-accent-teal rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,216,166,0.15)] ring-1 ring-accent-teal/20">
@@ -212,8 +212,8 @@ export default function LoginScreen() {
                 </div>
               </div>
 
-              <h3 className="text-2xl font-light text-center text-light-text-main dark:text-text-main mb-2">Primeiro Acesso</h3>
-              <p className="text-light-text-muted dark:text-text-muted text-center mb-8 text-sm px-2">
+              <h3 className="text-2xl font-light text-center text-text-main mb-2">Primeiro Acesso</h3>
+              <p className="text-text-muted text-center mb-8 text-sm px-2">
                 {primeiroAcessoStep === 1
                   ? "Para iniciar seu cadastro, preencha seus dados de identificação abaixo."
                   : "Quase lá! Confirme se a sua matrícula está correta."}
@@ -234,7 +234,7 @@ export default function LoginScreen() {
                       required
                       value={paNome}
                       onChange={e => setPaNome(e.target.value)}
-                      className="dark-autofill w-full bg-slate-50 dark:bg-[#0f172a] border border-light-borderStrong dark:border-[#1e293b] text-light-text-main dark:text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-light-text-muted dark:placeholder:text-text-muted text-sm shadow-inner"
+                      className="dark-autofill w-full bg-[#0f172a] border border-[#1e293b] text-slate-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-accent-teal focus:border-accent-teal transition-all placeholder:text-text-muted text-sm shadow-inner"
                       placeholder="Nome Completo"
                     />
                   </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Users, DatabaseZap } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Users, DatabaseZap, ShieldCheck } from 'lucide-react';
 import TecnicosManager from '../components/settings/TecnicosManager';
 import CampaignManager from '../components/settings/CampaignManager';
 import { useAuthStore } from '../store/authStore';
@@ -174,8 +174,9 @@ export default function SettingsScreen() {
       <div className="bg-light-surface/90 dark:bg-[#1e293b]/50 backdrop-blur-md rounded-3xl p-8 border border-light-borderStrong dark:border-border shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-teal/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         
-        <h1 className="text-3xl md:text-4xl font-black text-light-text-main dark:text-text-main mb-2 tracking-tight">
-          Painel do <span className="text-accent-teal">Moderador</span>
+        <h1 className="text-2xl font-bold text-light-text-main dark:text-text-main flex items-center gap-2 mb-2">
+          <ShieldCheck className="text-accent-teal" size={24} />
+          Painel do Moderador
         </h1>
         <p className="text-light-text-secondary dark:text-text-muted text-sm md:text-base max-w-2xl mb-8">
           Gerencie a base de dados do sistema Brilha+, atualize as equipes e inicie novos ciclos de campanha mensais.
