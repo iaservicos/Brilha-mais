@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/authStore';
 import { Pencil, Trash2, KeyRound, Plus, X, Search, Loader2 } from 'lucide-react';
+import { toTitleCase } from '../../utils/stringFormatters';
 
 interface Tecnico {
   idTecnico: number;
   matricula: string;
   nomeCompleto: string;
-  ctBase: string;
+  ctBases: string[];
   cargo: string;
   ativo: boolean;
   role: string;
@@ -201,8 +202,8 @@ export default function TecnicosManager() {
                 filteredTecnicos.map(t => (
                   <tr key={t.idTecnico} className="hover:bg-slate-50 dark:hover:bg-surface/30 transition-colors">
                     <td className="px-6 py-3 font-medium text-light-text-main dark:text-slate-300">{t.matricula}</td>
-                    <td className="px-6 py-3 text-light-text-main dark:text-slate-300">{t.nomeCompleto}</td>
-                    <td className="px-6 py-3 text-light-text-secondary dark:text-slate-400">{t.ctBase || '-'}</td>
+                    <td className="px-6 py-3 text-light-text-main dark:text-slate-300">{toTitleCase(t.nomeCompleto)}</td>
+                    <td className="px-6 py-3 text-light-text-secondary dark:text-slate-400">{t.ctBases ? t.ctBases.join(', ') : '-'}</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider ${
                         t.role === 'MODERADOR' ? 'bg-amber-500/20 text-amber-400' : 
@@ -309,8 +310,8 @@ export default function TecnicosManager() {
                     <input 
                       type="text" 
                       className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.ctBase || ''}
-                      onChange={e => setFormData({...formData, ctBase: e.target.value})}
+                      value={formData.ctBases ? formData.ctBases.join(', ') : ''}
+                      onChange={e => setFormData({...formData, ctBases: e.target.value.split(',').map(s => s.trim())})}
                     />
                   </div>
                   <div className="space-y-1">

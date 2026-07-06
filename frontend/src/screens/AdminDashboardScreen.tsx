@@ -7,6 +7,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import ChamadosHistoryCard from '../components/dashboard/ChamadosHistoryCard';
 import { TecnicoMetricsUI } from '../components/dashboard/TecnicoMetricsUI';
 import { useTecnicoMetrics } from '../hooks/useTecnicoMetrics';
+import { toTitleCase } from '../utils/stringFormatters';
+
 export default function AdminDashboardScreen() {
   const { user } = useAuthStore();
   
@@ -33,18 +35,27 @@ export default function AdminDashboardScreen() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Busca a arvore completa de funcionarios e os resultados do ranking simultaneamente
-        const [rankingResp, tecnicosResp, supResp, basesResp] = await Promise.all([
+        // Primeiro busca supervisores para identificar o logado
+        const supResp = await api.get('/supervisores');
+        const supList = supResp.data || [];
+        if (mounted) setTodosSupervisores(supList);
+        
+        // Se for supervisor, passamos o id dele na requisição para não baixar a base inteira
+        let queryIdSupervisor = undefined;
+        if (!isModerador && user?.matricula) {
+           const logado = supList.find((s:any) => s.matricula === user.matricula);
+           if (logado) queryIdSupervisor = logado.idSupervisor;
+        }
+
+        const [rankingResp, tecnicosResp, basesResp] = await Promise.all([
           api.get('/dashboard/ranking'),
-          api.get('/tecnicos'),
-          api.get('/supervisores'),
-          api.get('/bases')
+          api.get('/tecnicos', { params: { idSupervisor: queryIdSupervisor } }),
+          api.get('/bases', { params: { idSupervisor: queryIdSupervisor } })
         ]);
         
         if (mounted) {
           if (rankingResp.data) setRankingOriginal(rankingResp.data);
           if (tecnicosResp.data) setTodosTecnicos(tecnicosResp.data);
-          if (supResp.data) setTodosSupervisores(supResp.data);
           if (basesResp.data) setTodasBases(basesResp.data);
         }
       } catch (error) {
@@ -102,7 +113,12 @@ export default function AdminDashboardScreen() {
     if (supervisorEfetivoId !== 'all') {
       filtradas = todasBases.filter(b => b.idSupervisor === supervisorEfetivoId);
     }
-    return filtradas.sort((a, b) => (a.nomeAtp || '').localeCompare(b.nomeAtp || ''));
+    
+    // Deduplicar por ctCodigo, já que uma macro base pode ter várias cidades mas os técnicos 
+    // são filtrados apenas pelo ctCodigo e idSupervisor
+    const unicas = Array.from(new Map(filtradas.map(b => [b.ctCodigo, b])).values());
+    
+    return unicas.sort((a, b) => (a.nomeAtp || '').localeCompare(b.nomeAtp || ''));
   }, [todasBases, supervisorEfetivoId]);
 
   // Se a base selecionada não estiver na lista (ex: mudou de supervisor), reseta
@@ -125,12 +141,12 @@ export default function AdminDashboardScreen() {
     
     // Filtra pelas bases permitidas
     if (selectedEquipe !== 'all') {
-      lista = lista.filter(t => t.ctBase === selectedEquipe);
-    } else {
-      // Se "Todas as bases", mas tem um supervisor selecionado
-      if (supervisorEfetivoId !== 'all') {
-         lista = lista.filter(t => t.idSupervisor === supervisorEfetivoId);
-      }
+      lista = lista.filter(t => t.ctBases && t.ctBases.includes(selectedEquipe));
+    }
+    
+    // Filtro adicional: aplica o supervisor selecionado mesmo quando tem equipe selecionada
+    if (supervisorEfetivoId !== 'all') {
+      lista = lista.filter(t => t.idSupervisor === supervisorEfetivoId);
     }
     return lista.sort((a, b) => (a.nomeCompleto || '').localeCompare(b.nomeCompleto || ''));
   }, [todosTecnicos, selectedEquipe, supervisorEfetivoId]);
@@ -160,18 +176,24 @@ export default function AdminDashboardScreen() {
     if (tecnicosVisiveis.length === 0) return null;
     
     // Pega as métricas REAIS dos técnicos visíveis
-    const metricasReais = tecnicosVisiveis.map(t => rankingOriginal.find(r => r.matricula === t.matricula)).filter(Boolean);
+    const metricasReais = tecnicosVisiveis.map(t => rankingOriginal.find(r => 
+        (r.matricula && r.matricula === t.matricula) || 
+        (r.tecnico && String(r.tecnico).toUpperCase() === String(t.nomeCompleto).toUpperCase())
+    )).filter(Boolean);
     
     if (metricasReais.length === 0) {
-      return { mediaPontos: 0, somaProd: 0, mediaSla: 0, qtd: tecnicosVisiveis.length };
+      return { volumeChamados: 0, reincidenciaQtd: 0, pecasMedia: 0, slaMedia: 0, perdasQtd: 0, qtd: tecnicosVisiveis.length };
     }
     
-    const somaTotal = metricasReais.reduce((acc, t) => acc + (t.pontosTotal || 0), 0);
-    const mediaPontos = somaTotal / metricasReais.length;
     const somaProd = metricasReais.reduce((acc, t) => acc + (t.quantidadeProdutividade || 0), 0);
     const mediaSla = metricasReais.reduce((acc, t) => acc + (t.percentualSla || 0), 0) / metricasReais.length;
+    const mediaPecas = metricasReais.reduce((acc, t) => acc + (t.percentualEficienciaPecas || 0), 0) / metricasReais.length;
     
-    return { mediaPontos, somaProd, mediaSla, qtd: tecnicosVisiveis.length };
+    // Qtd Reincidencia = Prod * (Percentual / 100)
+    const reincidenciaQtd = Math.round(metricasReais.reduce((acc, t) => acc + (t.quantidadeProdutividade || 0) * (t.percentualReincidencia || 0) / 100, 0));
+    const perdasQtd = Math.round(metricasReais.reduce((acc, t) => acc + (t.quantidadeProdutividade || 0) * (t.percentualPerdidos || 0) / 100, 0));
+    
+    return { volumeChamados: somaProd, reincidenciaQtd, pecasMedia: mediaPecas, slaMedia: mediaSla, perdasQtd, qtd: tecnicosVisiveis.length };
   }, [tecnicosVisiveis, rankingOriginal]);
 
   if (loading) {
@@ -220,7 +242,7 @@ export default function AdminDashboardScreen() {
             >
               {isModerador && <option value="all">Todos os Supervisores</option>}
               {listaSupervisores.map(s => (
-                <option key={s.idSupervisor} value={s.matricula || s.idSupervisor?.toString()}>{s.nomeCompleto}</option>
+                <option key={s.idSupervisor} value={s.matricula || s.idSupervisor?.toString()}>{toTitleCase(s.nomeCompleto)}</option>
               ))}
             </select>
           </div>
@@ -236,7 +258,7 @@ export default function AdminDashboardScreen() {
               <option value="all">Todas as Bases</option>
               {equipesDisponiveis.map(base => {
                 const eq = base.ctCodigo;
-                const label = base.nomeAtp ? `${eq} - ${base.nomeAtp} (${base.uf || ''})` : eq;
+                const label = base.nomeAtp ? `${eq} - ${toTitleCase(base.nomeAtp)} (${base.uf || ''})` : eq;
                 return <option key={eq} value={eq}>{label}</option>
               })}
             </select>
@@ -256,7 +278,7 @@ export default function AdminDashboardScreen() {
                 const matText = t.matricula ? `(${t.matricula})` : '';
                 return (
                   <option key={t.idTecnico} value={optionValue}>
-                    {t.nomeCompleto} {matText}
+                    {toTitleCase(t.nomeCompleto)} {matText}
                   </option>
                 );
               })}
@@ -268,22 +290,26 @@ export default function AdminDashboardScreen() {
       {/* JSDoc: Visão Global (Team Dashboard) quando nenhum técnico específico está selecionado */}
       {selectedTecnicoIdentifier === 'all' && teamSummary && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Técnicos Listados</p>
-              <p className="text-3xl font-bold text-light-text-main dark:text-text-main mt-1">{teamSummary.qtd}</p>
+              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Volume de Chamados</p>
+              <p className="text-3xl font-bold text-light-text-main dark:text-text-main mt-1">{teamSummary.volumeChamados}</p>
             </div>
             <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Média de Pontos</p>
-              <p className="text-3xl font-bold text-accent-teal mt-1">{teamSummary.mediaPontos.toFixed(1)}</p>
+              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Reincidência (Qtd)</p>
+              <p className="text-3xl font-bold text-accent-teal mt-1">{teamSummary.reincidenciaQtd}</p>
             </div>
             <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Volume (Produtividade)</p>
-              <p className="text-3xl font-bold text-brilhamais-gold mt-1">{teamSummary.somaProd} <span className="text-sm font-normal text-light-text-muted">chamados</span></p>
+              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Eficiência Peças (Média)</p>
+              <p className="text-3xl font-bold text-brilhamais-gold mt-1">{teamSummary.pecasMedia.toFixed(1)}%</p>
             </div>
             <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
-              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">SLA Médio (Atingimento)</p>
-              <p className="text-3xl font-bold text-status-success mt-1">{teamSummary.mediaSla.toFixed(1)}%</p>
+              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">SLA da Base (Média)</p>
+              <p className="text-3xl font-bold text-status-success mt-1">{teamSummary.slaMedia.toFixed(1)}%</p>
+            </div>
+            <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
+              <p className="text-sm font-medium text-light-text-muted dark:text-text-muted">Perdas SLA (Qtd)</p>
+              <p className="text-3xl font-bold text-status-error mt-1">{teamSummary.perdasQtd}</p>
             </div>
           </div>
           

@@ -7,18 +7,29 @@ import br.com.positivo.brilhamais.repositories.ApuracaoMensalRepository;
 import br.com.positivo.brilhamais.repositories.CampanhaRepository;
 import br.com.positivo.brilhamais.repositories.TecnicoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MotorCalculoService {
+
+    @Lazy
+    @Autowired
+    private MotorCalculoService self;
 
     private final TecnicoRepository tecnicoRepository;
     private final ApuracaoMensalRepository apuracaoRepository;
@@ -32,7 +43,6 @@ public class MotorCalculoService {
         calcularEProcessarMes(LocalDate.now().withDayOfMonth(1));
     }
 
-    @Transactional
     public void calcularEProcessarMes(LocalDate ignoredParam) {
         Campanha campanhaAtiva = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
         if (campanhaAtiva == null) return;
@@ -40,9 +50,29 @@ public class MotorCalculoService {
         LocalDate dataInicio = campanhaAtiva.getDataInicio();
         LocalDate dataFim = campanhaAtiva.getDataFim();
 
-        tecnicoRepository.findAll().stream()
+        List<Integer> tecnicoIds = tecnicoRepository.findAll().stream()
             .filter(Tecnico::getAtivo)
-            .forEach(tecnico -> processarTecnico(tecnico, dataInicio, dataFim));
+            .map(Tecnico::getIdTecnico)
+            .toList();
+
+        // Fix: Use a custom ForkJoinPool to limit parallelism to 3 threads.
+        // This prevents exhausting the HikariCP connection pool (which is 5),
+        // leaving 2 connections free for frontend API requests so they don't timeout.
+        java.util.concurrent.ForkJoinPool customThreadPool = new java.util.concurrent.ForkJoinPool(3);
+        try {
+            customThreadPool.submit(() ->
+                tecnicoIds.parallelStream().forEach(idTecnico -> {
+                    try {
+                        self.processarTecnicoPorId(idTecnico, dataInicio, dataFim);
+                    } catch (Exception e) {
+                        log.error("Falha ao processar métricas do técnico ID {}: {}", 
+                                  idTecnico, e.getMessage(), e);
+                    }
+                })
+            ).join();
+        } finally {
+            customThreadPool.shutdown();
+        }
     }
 
     @Transactional
@@ -53,10 +83,20 @@ public class MotorCalculoService {
         Tecnico tecnico = tecnicoRepository.findByMatricula(matricula).orElse(null);
         if (tecnico == null || !tecnico.getAtivo() || "00000".equals(matricula)) return;
 
-        processarTecnico(tecnico, campanhaAtiva.getDataInicio(), campanhaAtiva.getDataFim());
+        self.processarTecnico(tecnico, campanhaAtiva.getDataInicio(), campanhaAtiva.getDataFim());
     }
 
-    private void processarTecnico(Tecnico tecnico, LocalDate dataInicioCampanha, LocalDate dataFimCampanha) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processarTecnicoPorId(Integer idTecnico, LocalDate dataInicioCampanha, LocalDate dataFimCampanha) {
+        Tecnico tecnico = tecnicoRepository.findById(idTecnico).orElse(null);
+        if (tecnico == null || !tecnico.getAtivo() || "00000".equals(tecnico.getMatricula())) return;
+        
+        processarTecnico(tecnico, dataInicioCampanha, dataFimCampanha);
+    }
+
+    // Usado como inner call e fallback, não precisa de REQUIRES_NEW caso já venha da porId ou se não der lazy exception
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processarTecnico(Tecnico tecnico, LocalDate dataInicioCampanha, LocalDate dataFimCampanha) {
         java.util.List<ApuracaoMensal> apuracoesMensais = new java.util.ArrayList<>();
         java.util.Set<LocalDate> datasValidas = new java.util.HashSet<>();
         LocalDate currentDate = dataInicioCampanha.withDayOfMonth(1);
@@ -157,14 +197,14 @@ public class MotorCalculoService {
 
     private ApuracaoMensal calcularParaPeriodo(Tecnico tecnico, LocalDate dataInicio, LocalDate dataFim, LocalDate mesAnoGravacao) {
         int idTecnico = tecnico.getIdTecnico();
-        String ctBase = tecnico.getCtBase();
+        List<String> ctBases = tecnico.getCtBases();
 
 
         // Buscando Métricas Base do BD
-        BigDecimal pSlaEquipe = calculoMetricasRepository.calcularPercentualSlaEquipe(idTecnico, ctBase, dataInicio, dataFim);
-        BigDecimal pReincEquipe = calculoMetricasRepository.calcularPercentualReincidenciaEquipe(idTecnico, ctBase, dataInicio, dataFim);
-        BigDecimal pPerdidosEquipe = calculoMetricasRepository.calcularPercentualPerdidosEquipe(idTecnico, ctBase, dataInicio, dataFim);
-        Map<String, Object> npsResult = calculoMetricasRepository.buscarNps(idTecnico, ctBase, dataInicio, dataFim);
+        BigDecimal pSlaEquipe = calculoMetricasRepository.calcularPercentualSlaEquipe(idTecnico, ctBases, dataInicio, dataFim);
+        BigDecimal pReincEquipe = calculoMetricasRepository.calcularPercentualReincidenciaEquipe(idTecnico, ctBases, dataInicio, dataFim);
+        BigDecimal pPerdidosEquipe = calculoMetricasRepository.calcularPercentualPerdidosEquipe(idTecnico, ctBases, dataInicio, dataFim);
+        Map<String, Object> npsResult = calculoMetricasRepository.buscarNps(idTecnico, ctBases, dataInicio, dataFim);
         
         long totalChamadosIndiv = calculoMetricasRepository.buscarTotalChamadosIndividual(idTecnico, dataInicio, dataFim);
         BigDecimal pReincIndiv = calculoMetricasRepository.calcularPercentualReincidenciaIndividual(idTecnico, dataInicio, dataFim);

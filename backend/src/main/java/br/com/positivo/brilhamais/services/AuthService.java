@@ -49,8 +49,8 @@ public class AuthService {
             }
 
             String estado = null;
-            if (tecnico.getCtBase() != null && !tecnico.getCtBase().isEmpty()) {
-                estado = repository.findEstadoByCtBase(tecnico.getCtBase());
+            if (tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty()) {
+                estado = repository.findEstadoByCtBase(tecnico.getCtBases().get(0));
             }
 
             return AuthResponse.builder()
@@ -59,7 +59,7 @@ public class AuthService {
                     .isPrimeiroAcesso(tecnico.getIsPrimeiroAcesso())
                     .nome(tecnico.getNomeCompleto())
                     .cargo(tecnico.getCargo())
-                    .localEquipe(estado != null ? estado : tecnico.getCtBase())
+                    .localEquipe(estado != null ? estado : (tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty() ? String.join(",", tecnico.getCtBases()) : ""))
                     .role(tecnico.getRole() != null ? tecnico.getRole() : "PADRAO")
                     .build();
         } else {
@@ -120,7 +120,7 @@ public class AuthService {
             return VerificarTecnicoResponse.builder()
                     .id(tecnico.getIdTecnico())
                     .nomeCompleto(tecnico.getNomeCompleto())
-                    .ctBase(tecnico.getCtBase())
+                    .ctBase(tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty() ? tecnico.getCtBases().get(0) : "")
                     .build();
         } else {
             var supervisor = supervisorRepository.findByNomeCompleto(request.getNome().trim())
@@ -188,8 +188,8 @@ public class AuthService {
         var refreshToken = jwtService.generateRefreshToken(tecnico);
 
         String estado = null;
-        if (tecnico.getCtBase() != null && !tecnico.getCtBase().isEmpty()) {
-            estado = repository.findEstadoByCtBase(tecnico.getCtBase());
+        if (tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty()) {
+            estado = repository.findEstadoByCtBase(tecnico.getCtBases().get(0));
         }
 
         return AuthResponse.builder()
@@ -198,7 +198,7 @@ public class AuthService {
                 .isPrimeiroAcesso(tecnico.getIsPrimeiroAcesso())
                 .nome(tecnico.getNomeCompleto())
                 .cargo(tecnico.getCargo())
-                .localEquipe(estado != null ? estado : tecnico.getCtBase())
+                .localEquipe(estado != null ? estado : (tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty() ? String.join(",", tecnico.getCtBases()) : ""))
                 .role(tecnico.getRole() != null ? tecnico.getRole() : "PADRAO")
                 .build();
     }

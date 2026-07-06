@@ -190,7 +190,7 @@ public class DashboardService {
                 .motivoInelegibilidade(apuracao.getMotivoInelegibilidade())
                 .mesReferencia(apuracao.getMesAno())
                 .matricula(apuracao.getTecnico().getMatricula())
-                .localEquipe(apuracao.getTecnico().getCtBase())
+                .localEquipe(apuracao.getTecnico().getCtBases() != null ? String.join(",", apuracao.getTecnico().getCtBases()) : "")
                 .historico(historico)
                 .build();
     }

@@ -15,13 +15,13 @@ public interface ApuracaoMensalRepository extends JpaRepository<ApuracaoMensal, 
     
     List<ApuracaoMensal> findByTecnicoIdTecnicoAndMesAnoBetween(Integer idTecnico, LocalDate dataInicio, LocalDate dataFim);
     
-    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t WHERE a.mesAno = :mesAno ORDER BY a.pontuacaoTotal DESC")
+    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t LEFT JOIN FETCH t.ctBases WHERE a.mesAno = :mesAno ORDER BY a.pontuacaoTotal DESC")
     List<ApuracaoMensal> findRankingByMesAno(LocalDate mesAno);
     
-    @Query("SELECT a FROM ApuracaoMensal a WHERE a.tecnico.idTecnico = :idTecnico ORDER BY a.mesAno ASC")
+    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t LEFT JOIN FETCH t.ctBases WHERE a.tecnico.idTecnico = :idTecnico ORDER BY a.mesAno ASC")
     List<ApuracaoMensal> findHistoricoByTecnicoId(Integer idTecnico);
 
-    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t WHERE t.idTecnico IN :ids ORDER BY a.mesAno ASC")
+    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t LEFT JOIN FETCH t.ctBases WHERE t.idTecnico IN :ids ORDER BY a.mesAno ASC")
     List<ApuracaoMensal> findHistoricoByTecnicoIds(List<Integer> ids);
 
     @Query("SELECT MAX(a.mesAno) FROM ApuracaoMensal a")

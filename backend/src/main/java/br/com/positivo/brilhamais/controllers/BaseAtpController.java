@@ -18,7 +18,12 @@ public class BaseAtpController {
     private final BaseAtpRepository baseAtpRepository;
 
     @GetMapping
-    public ResponseEntity<List<BaseAtp>> getAllBases() {
+    public ResponseEntity<List<BaseAtp>> getAllBases(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer idSupervisor
+    ) {
+        if (idSupervisor != null) {
+            return ResponseEntity.ok(baseAtpRepository.findByIdSupervisor(idSupervisor));
+        }
         return ResponseEntity.ok(baseAtpRepository.findAll());
     }
 }

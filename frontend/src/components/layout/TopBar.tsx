@@ -6,6 +6,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { api } from '../../services/api';
 import ModalConfiguracoes from './ModalConfiguracoes';
 import ModalAjuda from './ModalAjuda';
+import { toTitleCase } from '../../utils/stringFormatters';
 
 export default function TopBar() {
   const { user, logout } = useAuthStore();
@@ -112,7 +113,7 @@ export default function TopBar() {
           >
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-bold text-light-text-main dark:text-text-main leading-tight">
-                {user?.nomeCompleto || 'Técnico'}
+                {user?.nomeCompleto ? toTitleCase(user.nomeCompleto) : 'Técnico'}
               </span>
               <span className="text-xs text-accent-teal font-medium">
                 {user?.cargo || 'Técnico N2'}
@@ -131,7 +132,7 @@ export default function TopBar() {
           {isMenuOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-light-surface dark:bg-surface rounded-md shadow-lg py-1 border border-light-borderStrong dark:border-border z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-2 border-b border-light-borderStrong dark:border-border mb-1">
-                <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{user?.nomeCompleto}</p>
+                <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{toTitleCase(user?.nomeCompleto)}</p>
                 <p className="text-xs text-light-text-muted dark:text-text-muted truncate" title={user?.localEquipe}>{user?.localEquipe || 'Localidade não informada'}</p>
               </div>
               {/* JSDoc: Administradores e Moderadores têm acesso ao Painel de Supervisão */}

@@ -21,7 +21,8 @@ export function useTecnicoMetrics(
     // Em alguns casos pode retornar String(idTecnico) como fallback se a matricula for nula.
     const rankingData = rankingOriginal.find(r => 
         (r.matricula && String(r.matricula) === selectedTecnicoIdentifier) || 
-        (r.idTecnico && String(r.idTecnico) === selectedTecnicoIdentifier)
+        (r.idTecnico && String(r.idTecnico) === selectedTecnicoIdentifier) ||
+        (r.tecnico && String(r.tecnico).toUpperCase() === String(tecnicoInfo.nomeCompleto).toUpperCase())
     );
     
     // Se não tiver dados no ranking (ex: mes vazio ou novo tecnico), retorna um stub zerado
@@ -30,7 +31,7 @@ export function useTecnicoMetrics(
          idTecnico: tecnicoInfo.idTecnico,
          tecnico: tecnicoInfo.nomeCompleto,
          matricula: tecnicoInfo.matricula,
-         localEquipe: tecnicoInfo.ctBase,
+         localEquipe: tecnicoInfo.ctBases ? tecnicoInfo.ctBases.join(',') : '',
          pontosTotal: 0,
          percentualSla: 0,
          pontosSla: 0,

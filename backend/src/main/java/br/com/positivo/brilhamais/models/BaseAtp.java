@@ -12,6 +12,10 @@ import lombok.*;
 public class BaseAtp {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_base")
+    private Integer idBase;
+
     @Column(name = "ct_codigo", length = 20)
     private String ctCodigo;
 

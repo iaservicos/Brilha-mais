@@ -53,7 +53,7 @@ export default function DashboardScreen() {
     idTecnico: 0, // Fallback dummy
     matricula: user.matricula,
     nomeCompleto: user.nomeCompleto,
-    ctBase: user.localEquipe
+    ctBases: user.localEquipe ? user.localEquipe.split(',') : []
   }] : [];
 
   const { metricas, displayMetricas } = useTecnicoMetrics(

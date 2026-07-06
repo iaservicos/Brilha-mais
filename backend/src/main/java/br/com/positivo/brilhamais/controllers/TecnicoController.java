@@ -21,7 +21,16 @@ public class TecnicoController {
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping
-    public ResponseEntity<List<Tecnico>> getAllTecnicos() {
+    public ResponseEntity<List<Tecnico>> getAllTecnicos(
+            @RequestParam(required = false) Integer idSupervisor,
+            @RequestParam(required = false) String ctBase
+    ) {
+        if (idSupervisor != null) {
+            return ResponseEntity.ok(tecnicoRepository.findByIdSupervisor(idSupervisor));
+        }
+        if (ctBase != null) {
+            return ResponseEntity.ok(tecnicoRepository.findByCtBasesContaining(ctBase));
+        }
         return ResponseEntity.ok(tecnicoRepository.findAll());
     }
 
@@ -41,7 +50,7 @@ public class TecnicoController {
             if (update.getNomeCompleto() != null) tecnico.setNomeCompleto(update.getNomeCompleto());
             if (update.getMatricula() != null) tecnico.setMatricula(update.getMatricula());
             if (update.getCpf() != null) tecnico.setCpf(update.getCpf());
-            if (update.getCtBase() != null) tecnico.setCtBase(update.getCtBase());
+            if (update.getCtBases() != null) tecnico.setCtBases(update.getCtBases());
             if (update.getCargo() != null) tecnico.setCargo(update.getCargo());
             if (update.getRole() != null) tecnico.setRole(update.getRole());
             if (update.getAtivo() != null) tecnico.setAtivo(update.getAtivo());

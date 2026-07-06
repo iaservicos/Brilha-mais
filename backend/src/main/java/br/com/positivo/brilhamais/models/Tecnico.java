@@ -31,8 +31,10 @@ public class Tecnico implements UserDetails {
     @Column(name = "nome_completo", nullable = false)
     private String nomeCompleto;
 
-    @Column(name = "ct_base")
-    private String ctBase;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "tb_tecnico_base", joinColumns = @JoinColumn(name = "id_tecnico"))
+    @Column(name = "ct_codigo")
+    private List<String> ctBases;
 
     @Column(name = "cargo")
     private String cargo;
