@@ -194,7 +194,7 @@ export default function CampaignManager() {
               </div>
             </div>
           ) : (
-            <div className="flex gap-4 items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
               <div className="bg-slate-100 dark:bg-surface p-4 rounded-xl">
                 <p className="text-sm text-light-text-muted dark:text-text-muted">Início</p>
                 <p className="text-lg font-bold text-light-text-main dark:text-slate-200">{formatDate(campanhaAtual.dataInicio)}</p>
@@ -216,18 +216,18 @@ export default function CampaignManager() {
         )}
 
         {campanhaAtual ? (
-          <div className="flex flex-wrap items-center gap-3 mt-2">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mt-2 w-full">
             <button 
               onClick={handleProcessarCalculos}
               disabled={isProcessing}
-              className="bg-accent-teal hover:bg-accent-teal/80 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-accent-teal hover:bg-accent-teal/80 text-white px-6 py-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed flex-1"
             >
               <Check size={20} />
               {isProcessing ? 'Iniciando...' : 'Iniciar campanha'}
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="bg-slate-100 dark:bg-surface hover:bg-slate-200 dark:hover:bg-[#253248] text-light-text-secondary dark:text-slate-300 border border-light-borderStrong dark:border-border px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+              className="bg-slate-100 dark:bg-surface hover:bg-slate-200 dark:hover:bg-[#253248] text-light-text-secondary dark:text-slate-300 border border-light-borderStrong dark:border-border px-6 py-3 rounded-xl font-semibold transition-all flex justify-center items-center gap-2 flex-1"
             >
               Encerrar Campanha
             </button>
@@ -235,7 +235,7 @@ export default function CampaignManager() {
         ) : (
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="mt-2 bg-accent-teal hover:bg-accent-teal-dark text-[#0f172a] px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+            className="mt-2 bg-accent-teal hover:bg-accent-teal-dark text-[#0f172a] px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <Calendar size={20} />
             Iniciar Nova Campanha

@@ -90,7 +90,7 @@ export default function TopBar() {
         {/* Toggle de Tema */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-full text-light-text-muted hover:text-light-text-secondary dark:text-text-muted dark:hover:text-text-main transition-colors"
+          className="hidden md:block p-2 rounded-full text-light-text-muted hover:text-light-text-secondary dark:text-text-muted dark:hover:text-text-main transition-colors"
         >
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
@@ -130,7 +130,7 @@ export default function TopBar() {
 
           {/* Menu Dropdown */}
           {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-light-surface dark:bg-surface rounded-md shadow-lg py-1 border border-light-borderStrong dark:border-border z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="hidden md:block absolute right-0 mt-2 w-48 bg-light-surface dark:bg-surface rounded-md shadow-lg py-1 border border-light-borderStrong dark:border-border z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-2 border-b border-light-borderStrong dark:border-border mb-1">
                 <p className="text-sm font-bold text-light-text-main dark:text-text-main truncate" title={user?.nomeCompleto}>{toTitleCase(user?.nomeCompleto)}</p>
                 <p className="text-xs text-light-text-muted dark:text-text-muted truncate" title={user?.localEquipe}>{user?.localEquipe || 'Localidade não informada'}</p>

@@ -119,7 +119,7 @@ public class CalculoMetricasRepository {
                 long totalValido = buscarTotalChamadosIndividual(idTecnico, inicio, fim);
                 if (totalValido == 0) return BigDecimal.ZERO;
                 
-                String sqlPecas = "SELECT count(DISTINCT p.chamado) as qtd FROM tb_consumo_peca p JOIN tb_tecnico t ON UPPER(TRIM(p.tecnico_nome)) = UPPER(TRIM(t.nome_completo)) " +
+                String sqlPecas = "SELECT count(DISTINCT p.chamado) as qtd FROM tb_consumo_peca p JOIN tb_tecnico t ON UPPER(TRIM(t.nome_completo)) LIKE UPPER(TRIM(p.tecnico_nome)) || '%' " +
                                 "WHERE t.id_tecnico = ? AND p.ft >= ? AND p.ft < ? " +
                                 "AND (UPPER(TRIM(p.subgrupo)) IN ('HD', 'HDD', 'SSD', 'TAMPA FRONTAL/ LCD') OR p.subgrupo ILIKE '%PLACA M%E%') " +
                                 "AND p.projeto <> 'H3-03535' " +
@@ -128,6 +128,9 @@ public class CalculoMetricasRepository {
                                 .getOrDefault("qtd", 0)).longValue();
                 
                 BigDecimal result = BigDecimal.valueOf(qtd).divide(BigDecimal.valueOf(totalValido), 4, RoundingMode.HALF_UP);
+                if (result.compareTo(BigDecimal.ONE) > 0) {
+                        result = BigDecimal.ONE;
+                }
                 System.out.println("DEBUG PEÇAS: id=" + idTecnico + " | inicio=" + inicio + " | fim=" + fim + " | qtd=" + qtd + " | total=" + totalValido + " | result=" + result);
                 return result;
         }

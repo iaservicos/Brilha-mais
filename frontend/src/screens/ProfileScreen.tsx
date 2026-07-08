@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, ThemeMode } from '../store/themeStore';
-import { LogOut, Sun, Moon, Monitor, User } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, User, Settings, HelpCircle } from 'lucide-react';
+import ModalConfiguracoes from '../components/layout/ModalConfiguracoes';
+import ModalAjuda from '../components/layout/ModalAjuda';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
+  
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isAjudaOpen, setIsAjudaOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -22,8 +28,12 @@ export default function ProfileScreen() {
 
       {/* Cartão de Informações do Usuário */}
       <div className="bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-border dark:border-border flex flex-col items-center">
-        <div className="w-20 h-20 bg-slate-200 dark:bg-positivo-secondary rounded-full flex items-center justify-center mb-4">
-          <User size={40} className="text-light-text-muted dark:text-light-text-muted" />
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 overflow-hidden bg-slate-200 dark:bg-positivo-secondary border border-light-borderStrong dark:border-border">
+          {user?.fotoPerfil ? (
+            <img src={user.fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+          ) : (
+            <User size={40} className="text-light-text-muted dark:text-light-text-muted" />
+          )}
         </div>
         <h2 className="text-xl font-bold text-light-text-main dark:text-text-main text-center">
           {user?.nomeCompleto || 'Técnico Brilha Mais'}
@@ -31,6 +41,33 @@ export default function ProfileScreen() {
         <p className="text-sm text-light-text-muted dark:text-text-muted mt-1">
           Matrícula: {user?.matricula}
         </p>
+      </div>
+
+      {/* Configurações Secundárias */}
+      <div className="grid gap-3">
+        <button
+          onClick={() => setIsConfigOpen(true)}
+          className="flex items-center justify-between bg-light-surface dark:bg-surface p-4 rounded-positivo-lg shadow-sm border border-light-border dark:border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-light-text-main dark:text-text-main font-medium">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+              <Settings size={20} className="text-light-text-secondary dark:text-text-muted" />
+            </div>
+            Alterar Foto e Senha
+          </div>
+        </button>
+
+        <button
+          onClick={() => setIsAjudaOpen(true)}
+          className="flex items-center justify-between bg-light-surface dark:bg-surface p-4 rounded-positivo-lg shadow-sm border border-light-border dark:border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+        >
+          <div className="flex items-center gap-3 text-light-text-main dark:text-text-main font-medium">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+              <HelpCircle size={20} className="text-light-text-secondary dark:text-text-muted" />
+            </div>
+            Central de Ajuda
+          </div>
+        </button>
       </div>
 
       {/* Configurações de Aparência */}
@@ -71,6 +108,10 @@ export default function ProfileScreen() {
         <LogOut size={20} />
         <span>Sair da Conta</span>
       </button>
+
+      {/* Modais */}
+      <ModalConfiguracoes isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+      <ModalAjuda isOpen={isAjudaOpen} onClose={() => setIsAjudaOpen(false)} />
     </div>
   );
 }

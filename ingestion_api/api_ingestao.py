@@ -214,13 +214,58 @@ def process_parts(task_id: str, file_contents: bytes):
             # PROTEÇÃO DE DUPLICIDADE: Busca os (chamado, subgrupo) já existentes para não duplicar peças idênticas do mesmo chamado
             pecas_existentes = {(str(r[0]), str(r[1])) for r in conn.execute(text("SELECT chamado, subgrupo FROM tb_consumo_peca")).fetchall()}
 
+            # PREPARAÇÃO DE TÉCNICOS PARA OS 3 FILTROS
+            df_tec = pd.read_sql("""
+                SELECT t.id_tecnico, UPPER(TRIM(t.nome_completo)) as nome, t.matricula, tb.ct_codigo
+                FROM tb_tecnico t
+                LEFT JOIN tb_tecnico_base tb ON t.id_tecnico = tb.id_tecnico
+            """, conn)
+            
+            # Agrupa as bases (CT) por técnico caso ele tenha mais de uma
+            df_tec_grp = df_tec.groupby(['id_tecnico', 'nome', 'matricula'])['ct_codigo'].apply(lambda x: [str(i).strip() for i in x if pd.notna(i)]).reset_index()
+
             pecas_insert = []
+            alertas_moderador = []
+            
             for _, row in df.iterrows():
                 chamado_num = str(row['chamado']).strip()
                 sub = str(row.get('subgrupo', ''))[:255] if pd.notna(row.get('subgrupo')) else ''
                 
                 # Só insere se não existir essa mesma peça para esse mesmo chamado
                 if (chamado_num, sub) not in pecas_existentes:
+                    
+                    tecnico_planilha = str(row.get('tecnico_nome', '')).strip().upper()
+                    matricula_planilha = str(row.get('matricula', '')).strip() if 'matricula' in row else ''
+                    ct_planilha = str(row.get('ct', '')).strip()
+                    
+                    # Filtro 1: Nome (Startswith para cobrir abreviações)
+                    matches = df_tec_grp[df_tec_grp['nome'].str.startswith(tecnico_planilha)] if tecnico_planilha else pd.DataFrame()
+                    
+                    # Filtro 2: Desempate por Matrícula
+                    if len(matches) > 1 and matricula_planilha:
+                        matches_mat = matches[matches['matricula'] == matricula_planilha]
+                        if not matches_mat.empty:
+                            matches = matches_mat
+                            
+                    # Filtro 3: Desempate por Base ATP (ct)
+                    if len(matches) > 1 and ct_planilha:
+                        # Filtra apenas técnicos que tenham esse CT na sua lista de bases
+                        matches_ct = matches[matches['ct_codigo'].apply(lambda cts: ct_planilha in cts)]
+                        if not matches_ct.empty:
+                            matches = matches_ct
+
+                    # Validação de Ambiguidade
+                    if len(matches) > 1:
+                        # Ainda encontrou 2 nomes semelhantes após 3 filtros!
+                        alertas_moderador.append(f"Chamado {chamado_num}: Duplicidade encontrada para o técnico '{tecnico_planilha}'. Linha ignorada para tratativa manual.")
+                        continue # Pula para o próximo sem inserir
+                        
+                    # Se encontrou exatamente 1, usa o nome oficial. Se encontrou 0, grava o original.
+                    if len(matches) == 1:
+                        nome_salvar = matches.iloc[0]['nome']
+                    else:
+                        nome_salvar = tecnico_planilha
+                        
                     pecas_existentes.add((chamado_num, sub))
                     
                     # Converte a data FT
@@ -244,7 +289,7 @@ def process_parts(task_id: str, file_contents: bytes):
                         'projeto': str(row.get('projeto', ''))[:255] if pd.notna(row.get('projeto')) else None,
                         'equipamento': str(row.get('equipamento', ''))[:255] if pd.notna(row.get('equipamento')) else None,
                         'sintoma': str(row.get('sintoma', '')) if pd.notna(row.get('sintoma')) else None,
-                        'tecnico_nome': str(row.get('tecnico_nome', ''))[:255] if pd.notna(row.get('tecnico_nome')) else None,
+                        'tecnico_nome': nome_salvar[:255] if nome_salvar else None,
                         'subgrupo': sub if sub != '' else None,
                         'acao': str(row.get('acao', ''))[:255] if pd.notna(row.get('acao')) else None
                     })
@@ -262,7 +307,16 @@ def process_parts(task_id: str, file_contents: bytes):
                     VALUES (:chamado, :ct, :atp, :ft, :segmento, :projeto, :equipamento, :sintoma, :tecnico_nome, :subgrupo, :acao)
                 """), chunk)
                 
-        task_progress[task_id] = {"status": "completed", "progress": 100, "message": f"Sucesso! {total_rows} peças processadas."}
+        msg_sucesso = f"Sucesso! {len(pecas_insert)} peças processadas."
+        if alertas_moderador:
+            msg_sucesso += f" Atenção: {len(alertas_moderador)} linhas ignoradas por técnicos duplicados. Tratamento manual requerido."
+        
+        task_progress[task_id] = {
+            "status": "completed", 
+            "progress": 100, 
+            "message": msg_sucesso,
+            "alerts": alertas_moderador
+        }
     except Exception as e:
         task_progress[task_id] = {"status": "error", "progress": 0, "message": str(e)}
 

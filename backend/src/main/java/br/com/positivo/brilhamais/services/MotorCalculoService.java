@@ -227,7 +227,7 @@ public class MotorCalculoService {
         int ptsReincIndivPts = conversorPontuacaoService.calcularPontosReincidenciaIndividual(percReincIndiv);
         
         double percPecasIndiv = pPecasIndiv.doubleValue() * 100;
-        double ptsPecasDouble = (percPecasIndiv <= 25) ? 12.5 : 0;
+        double ptsPecasDouble = conversorPontuacaoService.calcularPontosPecas(percPecasIndiv);
 
         double totalPontos = ptsSla + ptsReincEquipe + ptsPerdidos + ptsNps + ptsReincIndivPts + ptsPecasDouble;
 

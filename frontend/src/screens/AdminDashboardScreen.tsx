@@ -8,6 +8,8 @@ import ChamadosHistoryCard from '../components/dashboard/ChamadosHistoryCard';
 import { TecnicoMetricsUI } from '../components/dashboard/TecnicoMetricsUI';
 import { useTecnicoMetrics } from '../hooks/useTecnicoMetrics';
 import { toTitleCase } from '../utils/stringFormatters';
+import { EditCampaignModal } from '../components/modals/EditCampaignModal';
+import { Settings } from 'lucide-react';
 
 export default function AdminDashboardScreen() {
   const { user } = useAuthStore();
@@ -21,6 +23,7 @@ export default function AdminDashboardScreen() {
   const [todasBases, setTodasBases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isEditCampaignOpen, setIsEditCampaignOpen] = useState(false);
   
   // Filtros
   const [selectedSupervisor, setSelectedSupervisor] = useState<string>('all');
@@ -219,12 +222,11 @@ export default function AdminDashboardScreen() {
           </p>
           {isModerador && (
             <button
-              onClick={handleProcessarMes}
-              disabled={isProcessing}
-              className="mt-3 flex items-center gap-2 bg-accent-teal hover:bg-accent-teal/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+              onClick={() => setIsEditCampaignOpen(true)}
+              className="mt-3 flex items-center gap-2 bg-accent-teal hover:bg-accent-teal/90 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
             >
-              <RefreshCw size={16} className={isProcessing ? 'animate-spin' : ''} />
-              {isProcessing ? 'Processando Mês...' : 'Processar Mês'}
+              <Settings size={16} />
+              Editar Campanha
             </button>
           )}
         </div>
@@ -334,6 +336,13 @@ export default function AdminDashboardScreen() {
           />
         </div>
       )}
+
+      <EditCampaignModal 
+        isOpen={isEditCampaignOpen}
+        onClose={() => setIsEditCampaignOpen(false)}
+        onProcessarMes={handleProcessarMes}
+        isProcessing={isProcessing}
+      />
     </div>
   );
 }

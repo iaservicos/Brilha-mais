@@ -1,44 +1,78 @@
 package br.com.positivo.brilhamais.services;
 
+import br.com.positivo.brilhamais.models.FaixaPontuacao;
+import br.com.positivo.brilhamais.models.RegraKpi;
+import br.com.positivo.brilhamais.repositories.FaixaPontuacaoRepository;
+import br.com.positivo.brilhamais.repositories.RegraKpiRepository;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ConversorPontuacaoService {
 
+    private final RegraKpiRepository regraKpiRepository;
+    private final FaixaPontuacaoRepository faixaPontuacaoRepository;
+
+    // Cache of rules for fast calculation
+    private Map<String, List<FaixaPontuacao>> faixasCache = new HashMap<>();
+
+    @PostConstruct
+    public void initCache() {
+        faixasCache.clear();
+        List<RegraKpi> regras = regraKpiRepository.findAll();
+        for (RegraKpi regra : regras) {
+            List<FaixaPontuacao> faixas = faixaPontuacaoRepository.findByRegraKpiIdRegra(regra.getIdRegra());
+            faixasCache.put(regra.getNomeIndicador(), faixas);
+        }
+    }
+
+    public void recarregarRegras() {
+        initCache();
+    }
+
+    private double buscarPontuacaoDinamicamente(String nomeIndicador, double valor) {
+        List<FaixaPontuacao> faixas = faixasCache.get(nomeIndicador);
+        if (faixas == null || faixas.isEmpty()) return 0.0;
+        
+        BigDecimal valorBd = BigDecimal.valueOf(valor);
+        for (FaixaPontuacao faixa : faixas) {
+            if (valorBd.compareTo(faixa.getValorMinimo()) >= 0 && valorBd.compareTo(faixa.getValorMaximo()) <= 0) {
+                return faixa.getPontosObtidos().doubleValue();
+            }
+        }
+        return 0.0;
+    }
+
     public double calcularPontosSla(double perc) {
-        if (perc >= 100) return 32.5;
-        if (perc >= 90) return 28.0;
-        return 0;
+        return buscarPontuacaoDinamicamente("SLA Equipe", perc / 100.0);
     }
 
     public int calcularPontosReincidenciaEquipe(double perc) {
-        if (perc <= 7) return 15;
-        if (perc <= 10) return 10;
-        return 0;
+        return (int) buscarPontuacaoDinamicamente("Reincidência Equipe", perc / 100.0);
     }
 
     public int calcularPontosPerdidos(double perc) {
-        if (perc <= 1) return 20;
-        if (perc <= 2) return 15;
-        return 0;
+        return (int) buscarPontuacaoDinamicamente("Perdidos Equipe", perc / 100.0);
     }
 
     public int calcularPontosReincidenciaIndividual(double perc) {
-        if (perc <= 7) return 15;
-        if (perc <= 10) return 10;
-        return 0;
+        return (int) buscarPontuacaoDinamicamente("Reincidência Individual", perc / 100.0);
+    }
+
+    public double calcularPontosPecas(double perc) {
+        return buscarPontuacaoDinamicamente("Peças Individual", perc / 100.0);
     }
 
     public double calcularPontosNps(Map<String, Object> result) {
-        long total = ((Number) result.get("total")).longValue();
-        long promotores = ((Number) result.get("promotores")).longValue();
-        long detratores = ((Number) result.get("detratores")).longValue();
-        
-        if (total == 0 || (promotores > 0 && detratores == 0)) return 5.0;
-        return 0.0;
+        BigDecimal npsPercent = extrairPercentualNps(result);
+        return buscarPontuacaoDinamicamente("NPS Individual", npsPercent.doubleValue());
     }
 
     public BigDecimal extrairPercentualNps(Map<String, Object> result) {

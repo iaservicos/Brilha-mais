@@ -28,5 +28,5 @@ public class FaixaPontuacao {
     private BigDecimal valorMaximo;
 
     @Column(name = "pontos_obtidos")
-    private Integer pontosObtidos;
+    private BigDecimal pontosObtidos;
 }
