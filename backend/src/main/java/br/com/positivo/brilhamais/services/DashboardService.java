@@ -59,7 +59,13 @@ public class DashboardService {
         List<Integer> tecnicoIds = apuracoes.stream().map(a -> a.getTecnico().getIdTecnico())
                 .collect(Collectors.toList());
 
-        Map<Integer, List<ApuracaoMensal>> historicoPorTecnico = fetchHistoricoPorTecnico(tecnicoIds);
+        Campanha campanhaAtiva = campanhaRepository.findFirstByAtivaTrueOrderByIdCampanhaDesc().orElse(null);
+        Map<Integer, List<ApuracaoMensal>> historicoPorTecnico;
+        if (campanhaAtiva != null && campanhaAtiva.getDataInicio() != null && campanhaAtiva.getDataFim() != null) {
+            historicoPorTecnico = fetchHistoricoPorTecnicoEDatas(tecnicoIds, campanhaAtiva.getDataInicio(), campanhaAtiva.getDataFim());
+        } else {
+            historicoPorTecnico = fetchHistoricoPorTecnico(tecnicoIds);
+        }
 
         List<RankingDTO> ranking = new ArrayList<>();
         int posicao = 1;
@@ -79,6 +85,13 @@ public class DashboardService {
     }
 
     // --- Consultas Agrupadas ---
+
+    private Map<Integer, List<ApuracaoMensal>> fetchHistoricoPorTecnicoEDatas(List<Integer> tecnicoIds, LocalDate dataInicio, LocalDate dataFim) {
+        if (tecnicoIds.isEmpty())
+            return new HashMap<>();
+        return apuracaoRepository.findHistoricoByTecnicoIdsAndDataRange(tecnicoIds, dataInicio, dataFim).stream()
+                .collect(Collectors.groupingBy(h -> h.getTecnico().getIdTecnico()));
+    }
 
     private Map<Integer, List<ApuracaoMensal>> fetchHistoricoPorTecnico(List<Integer> tecnicoIds) {
         if (tecnicoIds.isEmpty())
@@ -123,6 +136,28 @@ public class DashboardService {
 
     private HistoricoDTO mapToHistoricoDTO(ApuracaoMensal h) {
         String label = h.getMesAno().getDayOfMonth() == 1 ? h.getMesAno().format(FORMATTER_MES) : "Média Final";
+        boolean semChamados = h.getTotalChamados() == null || h.getTotalChamados() == 0;
+
+        if (semChamados && !"Média Final".equals(label)) {
+            return HistoricoDTO.builder()
+                    .mes(label)
+                    .percentualSla(0.0)
+                    .pontosSla(0.0)
+                    .percentualReincidencia(0.0)
+                    .pontosReincidencia(0.0)
+                    .percentualReincidenciaEquipe(0.0)
+                    .pontosReincidenciaEquipe(0.0)
+                    .npsScore(0.0)
+                    .pontosNps(0.0)
+                    .percentualEficienciaPecas(0.0)
+                    .pontosPecas(0.0)
+                    .percentualPerdidos(0.0)
+                    .pontosPerdidos(0.0)
+                    .pontosTotal(0)
+                    .elegivel(false)
+                    .motivoInelegibilidade("Sem chamados/atendimentos registrados no mês")
+                    .build();
+        }
 
         return HistoricoDTO.builder()
                 .mes(label)
@@ -165,29 +200,31 @@ public class DashboardService {
     }
 
     private RankingDTO mapToRankingDTOFromApuracao(ApuracaoMensal apuracao, int pos, List<HistoricoDTO> historico) {
+        boolean semChamados = apuracao.getTotalChamados() == null || apuracao.getTotalChamados() == 0;
+
         return RankingDTO.builder()
                 .posicaoRanking(pos)
                 .idTecnico(apuracao.getTecnico().getIdTecnico())
                 .tecnico(apuracao.getTecnico().getNomeCompleto())
-                .pontosTotal(valToDouble(apuracao.getPontuacaoTotal()))
-                .percentualPerdidos(valToPctBD(apuracao.getAtingimentoPerdidos()))
-                .pontosPerdidos(valToDouble(apuracao.getPontosPerdidos()))
-                .percentualSla(valToPctBD(apuracao.getAtingimentoSla()))
-                .pontosSla(valToDouble(apuracao.getPontosSla()))
-                .percentualReincidencia(valToPctBD(apuracao.getAtingimentoReincidencia()))
-                .pontosReincidencia(valToDouble(apuracao.getPontosReincidencia()))
-                .percentualReincidenciaEquipe(valToPctBD(apuracao.getAtingimentoReincidenciaEquipe()))
-                .pontosReincidenciaEquipe(valToDouble(apuracao.getPontosReincidenciaEquipe()))
+                .pontosTotal(semChamados ? 0.0 : valToDouble(apuracao.getPontuacaoTotal()))
+                .percentualPerdidos(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoPerdidos()))
+                .pontosPerdidos(semChamados ? 0.0 : valToDouble(apuracao.getPontosPerdidos()))
+                .percentualSla(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoSla()))
+                .pontosSla(semChamados ? 0.0 : valToDouble(apuracao.getPontosSla()))
+                .percentualReincidencia(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoReincidencia()))
+                .pontosReincidencia(semChamados ? 0.0 : valToDouble(apuracao.getPontosReincidencia()))
+                .percentualReincidenciaEquipe(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoReincidenciaEquipe()))
+                .pontosReincidenciaEquipe(semChamados ? 0.0 : valToDouble(apuracao.getPontosReincidenciaEquipe()))
                 .quantidadeProdutividade(apuracao.getTotalChamados() != null ? apuracao.getTotalChamados() : 0)
-                .pontosProdutividade(valToDouble(apuracao.getPontosPecas()))
-                .percentualEficienciaPecas(valToPctBD(apuracao.getAtingimentoPecas()))
-                .pontosPecas(valToDouble(apuracao.getPontosPecas()))
-                .npsScore(valToPctBD(apuracao.getAtingimentoNps()))
-                .pontosNps(valToDouble(apuracao.getPontosNps()))
+                .pontosProdutividade(semChamados ? 0.0 : valToDouble(apuracao.getPontosPecas()))
+                .percentualEficienciaPecas(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoPecas()))
+                .pontosPecas(semChamados ? 0.0 : valToDouble(apuracao.getPontosPecas()))
+                .npsScore(semChamados ? BigDecimal.ZERO : valToPctBD(apuracao.getAtingimentoNps()))
+                .pontosNps(semChamados ? 0.0 : valToDouble(apuracao.getPontosNps()))
                 .npsPromotores(0)
                 .npsDetratores(0)
-                .elegivel(apuracao.getStatusElegibilidade())
-                .motivoInelegibilidade(apuracao.getMotivoInelegibilidade())
+                .elegivel(semChamados ? false : apuracao.getStatusElegibilidade())
+                .motivoInelegibilidade(semChamados ? "Sem chamados/atendimentos registrados no mês" : apuracao.getMotivoInelegibilidade())
                 .mesReferencia(apuracao.getMesAno())
                 .matricula(apuracao.getTecnico().getMatricula())
                 .localEquipe(apuracao.getTecnico().getCtBases() != null ? String.join(",", apuracao.getTecnico().getCtBases()) : "")

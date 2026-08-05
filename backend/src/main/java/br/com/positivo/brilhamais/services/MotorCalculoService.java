@@ -157,25 +157,32 @@ public class MotorCalculoService {
             apFinal.setStatusElegibilidade(ap1.getStatusElegibilidade());
             apFinal.setMotivoInelegibilidade(ap1.getMotivoInelegibilidade());
         } else {
-            apFinal.setAtingimentoSla(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoSla).toList()));
-            apFinal.setPontosSla(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosSla).sum() / size);
+            List<ApuracaoMensal> apuracoesComDados = apuracoesMensais.stream()
+                    .filter(ap -> ap.getTotalChamados() != null && ap.getTotalChamados() > 0)
+                    .toList();
             
-            apFinal.setAtingimentoReincidencia(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoReincidencia).toList()));
-            apFinal.setPontosReincidencia(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosReincidencia).sum() / size);
+            List<ApuracaoMensal> apuracoesParaMedia = apuracoesComDados.isEmpty() ? apuracoesMensais : apuracoesComDados;
+            int numMesesMedia = apuracoesParaMedia.size();
+
+            apFinal.setAtingimentoSla(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoSla).toList()));
+            apFinal.setPontosSla(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosSla).sum() / numMesesMedia);
             
-            apFinal.setAtingimentoReincidenciaEquipe(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoReincidenciaEquipe).toList()));
-            apFinal.setPontosReincidenciaEquipe(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosReincidenciaEquipe).sum() / size);
+            apFinal.setAtingimentoReincidencia(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoReincidencia).toList()));
+            apFinal.setPontosReincidencia(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosReincidencia).sum() / numMesesMedia);
             
-            apFinal.setAtingimentoPecas(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoPecas).toList()));
-            apFinal.setPontosPecas(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosPecas).sum() / size);
+            apFinal.setAtingimentoReincidenciaEquipe(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoReincidenciaEquipe).toList()));
+            apFinal.setPontosReincidenciaEquipe(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosReincidenciaEquipe).sum() / numMesesMedia);
             
-            apFinal.setAtingimentoNps(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoNps).toList()));
-            apFinal.setPontosNps(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosNps).sum() / size);
+            apFinal.setAtingimentoPecas(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoPecas).toList()));
+            apFinal.setPontosPecas(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosPecas).sum() / numMesesMedia);
             
-            apFinal.setAtingimentoPerdidos(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getAtingimentoPerdidos).toList()));
-            apFinal.setPontosPerdidos(apuracoesMensais.stream().mapToDouble(ApuracaoMensal::getPontosPerdidos).sum() / size);
+            apFinal.setAtingimentoNps(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoNps).toList()));
+            apFinal.setPontosNps(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosNps).sum() / numMesesMedia);
             
-            apFinal.setPontuacaoTotal(calcularMedia(apuracoesMensais.stream().map(ApuracaoMensal::getPontuacaoTotal).toList()));
+            apFinal.setAtingimentoPerdidos(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getAtingimentoPerdidos).toList()));
+            apFinal.setPontosPerdidos(apuracoesParaMedia.stream().mapToDouble(ApuracaoMensal::getPontosPerdidos).sum() / numMesesMedia);
+            
+            apFinal.setPontuacaoTotal(calcularMedia(apuracoesParaMedia.stream().map(ApuracaoMensal::getPontuacaoTotal).toList()));
             apFinal.setTotalChamados(apuracoesMensais.stream().mapToInt(ApuracaoMensal::getTotalChamados).sum());
             
             boolean elegivel = true;
@@ -231,6 +238,24 @@ public class MotorCalculoService {
 
         double totalPontos = ptsSla + ptsReincEquipe + ptsPerdidos + ptsNps + ptsReincIndivPts + ptsPecasDouble;
 
+        // Trava para meses sem atendimentos/chamados registrados: Zera todas as pontuações e percentuais
+        if (totalChamadosIndiv == 0) {
+            pSlaEquipe = BigDecimal.ZERO;
+            pReincEquipe = BigDecimal.ZERO;
+            pPerdidosEquipe = BigDecimal.ZERO;
+            pNps = BigDecimal.ZERO;
+            pReincIndiv = BigDecimal.ZERO;
+            pPecasIndiv = BigDecimal.ZERO;
+
+            ptsSla = 0.0;
+            ptsReincEquipe = 0;
+            ptsPerdidos = 0;
+            ptsNps = 0.0;
+            ptsReincIndivPts = 0;
+            ptsPecasDouble = 0.0;
+            totalPontos = 0.0;
+        }
+
         // Construindo e Salvando a Entidade
         ApuracaoMensal apuracao = apuracaoRepository
                 .findFirstByTecnicoIdTecnicoAndMesAno(idTecnico, dataInicio)
@@ -252,9 +277,14 @@ public class MotorCalculoService {
         apuracao.setTotalChamados((int) totalChamadosIndiv);
 
         // Elegibilidade Centralizada
-        RegrasElegibilidadeCiat.VereditoElegibilidade veredito = regrasCiat.avaliar(totalPontos, percSlaEquipe, (int) totalChamadosIndiv);
-        apuracao.setStatusElegibilidade(veredito.elegivel());
-        apuracao.setMotivoInelegibilidade(veredito.motivo());
+        if (totalChamadosIndiv == 0) {
+            apuracao.setStatusElegibilidade(false);
+            apuracao.setMotivoInelegibilidade("Sem chamados/atendimentos registrados no mês");
+        } else {
+            RegrasElegibilidadeCiat.VereditoElegibilidade veredito = regrasCiat.avaliar(totalPontos, percSlaEquipe, (int) totalChamadosIndiv);
+            apuracao.setStatusElegibilidade(veredito.elegivel());
+            apuracao.setMotivoInelegibilidade(veredito.motivo());
+        }
 
         apuracao.setDataCalculo(LocalDateTime.now());
         return apuracaoRepository.save(apuracao);

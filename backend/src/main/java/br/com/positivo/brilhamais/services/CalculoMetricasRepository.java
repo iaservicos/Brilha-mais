@@ -131,7 +131,6 @@ public class CalculoMetricasRepository {
                 if (result.compareTo(BigDecimal.ONE) > 0) {
                         result = BigDecimal.ONE;
                 }
-                System.out.println("DEBUG PEÇAS: id=" + idTecnico + " | inicio=" + inicio + " | fim=" + fim + " | qtd=" + qtd + " | total=" + totalValido + " | result=" + result);
                 return result;
         }
 

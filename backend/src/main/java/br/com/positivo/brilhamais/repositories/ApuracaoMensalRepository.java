@@ -22,7 +22,14 @@ public interface ApuracaoMensalRepository extends JpaRepository<ApuracaoMensal, 
     List<ApuracaoMensal> findHistoricoByTecnicoId(Integer idTecnico);
 
     @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t LEFT JOIN FETCH t.ctBases WHERE t.idTecnico IN :ids ORDER BY a.mesAno ASC")
-    List<ApuracaoMensal> findHistoricoByTecnicoIds(List<Integer> ids);
+    List<ApuracaoMensal> findHistoricoByTecnicoIds(@org.springframework.data.repository.query.Param("ids") List<Integer> ids);
+
+    @Query("SELECT a FROM ApuracaoMensal a JOIN FETCH a.tecnico t LEFT JOIN FETCH t.ctBases WHERE t.idTecnico IN :ids AND a.mesAno BETWEEN :dataInicio AND :dataFim ORDER BY a.mesAno ASC")
+    List<ApuracaoMensal> findHistoricoByTecnicoIdsAndDataRange(
+        @org.springframework.data.repository.query.Param("ids") List<Integer> ids,
+        @org.springframework.data.repository.query.Param("dataInicio") LocalDate dataInicio,
+        @org.springframework.data.repository.query.Param("dataFim") LocalDate dataFim
+    );
 
     @Query("SELECT MAX(a.mesAno) FROM ApuracaoMensal a")
     Optional<LocalDate> findMaxMesAno();
