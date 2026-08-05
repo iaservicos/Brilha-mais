@@ -45,6 +45,21 @@ services:
     networks:
       - brilhamais_dev_network
 
+  # --- SERVIÇO DE INGESTÃO (PYTHON FASTAPI - MODO DEV) ---
+  python_ingestion:
+    build:
+      context: ./scripts/scripts_python
+      dockerfile: Dockerfile.ingest
+    container_name: brilhamais_ingestion_dev
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./scripts/scripts_python/data_ingestion/ingestion_api:/app
+    env_file:
+      - .env
+    networks:
+      - brilhamais_dev_network
+
 volumes:
   maven_cache:
 

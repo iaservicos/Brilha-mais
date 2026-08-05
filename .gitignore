@@ -87,6 +87,7 @@ ehthumbs.db
 Thumbs.db
 
 # Project Specific & AI Tools
+.agents
 .agent/
 .github/
 .gemini/
@@ -118,3 +119,4 @@ scratch/
 *.csv
 *.xlsx
 *.xls
+/Documentações/

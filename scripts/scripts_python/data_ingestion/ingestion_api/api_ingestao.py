@@ -48,7 +48,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 # A URL de conexão vem do docker-compose ou do ambiente local
 DB_URL = os.getenv('DATABASE_URL')
 if not DB_URL:
-    raise RuntimeError("A variável de ambiente DATABASE_URL não está configurada.")
+    spring_url = os.getenv('SPRING_DATASOURCE_URL')
+    if spring_url:
+        DB_URL = spring_url.replace('jdbc:', '')
+
+if not DB_URL:
+    raise RuntimeError("A variável de ambiente DATABASE_URL (ou SPRING_DATASOURCE_URL) não está configurada.")
 
 # Criando a engine de conexão síncrona do SQLAlchemy com resiliência de pool
 engine = create_engine(
@@ -105,12 +110,14 @@ def process_base_dl(task_id: str, file_contents: bytes):
                     'nome': str(row['Assistencia_nome'])[:150]
                 })
             if bases_insert:
-                conn.execute(text("""
-                    INSERT INTO tb_base_atp (ct_codigo, nome_atp, tipo_atp) 
-                    VALUES (:ct, :nome, 'IMPORTACAO_AUTO') 
-                    ON CONFLICT (ct_codigo) DO NOTHING
-                """), bases_insert)
-                conn.commit()
+                existing_cts = set(r[0] for r in conn.execute(text("SELECT DISTINCT ct_codigo FROM tb_base_atp WHERE ct_codigo IS NOT NULL")).fetchall())
+                new_bases = [b for b in bases_insert if b['ct'] not in existing_cts]
+                if new_bases:
+                    conn.execute(text("""
+                        INSERT INTO tb_base_atp (ct_codigo, nome_atp, tipo_atp) 
+                        VALUES (:ct, :nome, 'IMPORTACAO_AUTO')
+                    """), new_bases)
+                    conn.commit()
 
             # 3. Tratamento e transformação linha a linha
             chamados_insert = []
