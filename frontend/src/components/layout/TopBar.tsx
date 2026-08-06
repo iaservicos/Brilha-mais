@@ -113,10 +113,10 @@ export default function TopBar() {
           >
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-bold text-light-text-main dark:text-text-main leading-tight">
-                {user?.nomeCompleto ? toTitleCase(user.nomeCompleto) : 'Técnico'}
+                {user?.nomeCompleto ? toTitleCase(user.nomeCompleto) : 'Usuário'}
               </span>
               <span className="text-xs text-accent-teal font-medium">
-                {user?.cargo || 'Técnico N2'}
+                {user?.cargo || (isModerador ? 'Moderador' : isSupervisor ? 'Supervisor' : 'Técnico')}
               </span>
             </div>
             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-surface border border-light-borderStrong dark:border-border flex items-center justify-center text-light-text-muted dark:text-text-muted hover:bg-slate-200 transition-colors overflow-hidden">

@@ -34,6 +34,37 @@ public class AuthService {
                 )
         );
 
+        // 1. Tenta buscar como Supervisor primeiro
+        var supervisorOpt = supervisorRepository.findByMatricula(request.getMatricula());
+
+        if (supervisorOpt.isPresent()) {
+            var supervisor = supervisorOpt.get();
+            var accessToken = jwtService.generateToken(supervisor);
+            var refreshToken = jwtService.generateRefreshToken(supervisor);
+
+            // Busca as bases que este supervisor gerencia
+            java.util.List<String> bases = jdbcTemplate.queryForList(
+                "SELECT ct_codigo FROM tb_base_atp WHERE UPPER(supervisor) = ?", 
+                String.class, 
+                supervisor.getNomeCompleto().toUpperCase()
+            );
+            String ctBases = String.join(",", bases);
+
+            String cargoSupervisor = (supervisor.getRole() != null && supervisor.getRole().equalsIgnoreCase("MODERADOR")) 
+                    ? "Moderador" : "Supervisor";
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .isPrimeiroAcesso(supervisor.getIsPrimeiroAcesso())
+                    .nome(supervisor.getNomeCompleto())
+                    .cargo(cargoSupervisor)
+                    .localEquipe(ctBases) // Múltiplas bases
+                    .role(supervisor.getRole() != null ? supervisor.getRole() : "ADMINISTRADOR")
+                    .build();
+        }
+
+        // 2. Se não for supervisor, busca como Técnico
         var tecnicoOpt = repository.findByMatricula(request.getMatricula());
 
         if (tecnicoOpt.isPresent()) {
@@ -53,40 +84,21 @@ public class AuthService {
                 estado = repository.findEstadoByCtBase(tecnico.getCtBases().get(0));
             }
 
+            String cargoTecnico = (tecnico.getCargo() != null && !tecnico.getCargo().trim().isEmpty()) 
+                    ? tecnico.getCargo() : "Técnico";
+
             return AuthResponse.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .isPrimeiroAcesso(tecnico.getIsPrimeiroAcesso())
                     .nome(tecnico.getNomeCompleto())
-                    .cargo(tecnico.getCargo())
+                    .cargo(cargoTecnico)
                     .localEquipe(estado != null ? estado : (tecnico.getCtBases() != null && !tecnico.getCtBases().isEmpty() ? String.join(",", tecnico.getCtBases()) : ""))
                     .role(tecnico.getRole() != null ? tecnico.getRole() : "PADRAO")
                     .build();
-        } else {
-            var supervisor = supervisorRepository.findByMatricula(request.getMatricula())
-                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-
-            var accessToken = jwtService.generateToken(supervisor);
-            var refreshToken = jwtService.generateRefreshToken(supervisor);
-
-            // Busca as bases que este supervisor gerencia
-            java.util.List<String> bases = jdbcTemplate.queryForList(
-                "SELECT ct_codigo FROM tb_base_atp WHERE UPPER(supervisor) = ?", 
-                String.class, 
-                supervisor.getNomeCompleto().toUpperCase()
-            );
-            String ctBases = String.join(",", bases);
-
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .isPrimeiroAcesso(supervisor.getIsPrimeiroAcesso())
-                    .nome(supervisor.getNomeCompleto())
-                    .cargo("Supervisor")
-                    .localEquipe(ctBases) // Múltiplas bases
-                    .role(supervisor.getRole() != null ? supervisor.getRole() : "ADMINISTRADOR")
-                    .build();
         }
+
+        throw new RuntimeException("Usuário não encontrado");
     }
 
     public void changePassword(String matricula, String novaSenha) {

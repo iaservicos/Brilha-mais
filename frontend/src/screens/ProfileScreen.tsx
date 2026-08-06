@@ -36,9 +36,12 @@ export default function ProfileScreen() {
           )}
         </div>
         <h2 className="text-xl font-bold text-light-text-main dark:text-text-main text-center">
-          {user?.nomeCompleto || 'Técnico Brilha Mais'}
+          {user?.nomeCompleto || 'Usuário Brilha Mais'}
         </h2>
-        <p className="text-sm text-light-text-muted dark:text-text-muted mt-1">
+        <p className="text-sm font-medium text-accent-teal mt-0.5">
+          {user?.cargo || (user?.role === 'MODERADOR' ? 'Moderador' : user?.role === 'ADMINISTRADOR' ? 'Supervisor' : 'Técnico')}
+        </p>
+        <p className="text-xs text-light-text-muted dark:text-text-muted mt-1">
           Matrícula: {user?.matricula}
         </p>
       </div>
