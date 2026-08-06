@@ -8,6 +8,8 @@ interface Tecnico {
   idTecnico: number;
   matricula: string;
   nomeCompleto: string;
+  primeiroNome?: string;
+  sobrenome?: string;
   ctBases: string[];
   cargo: string;
   ativo: boolean;
@@ -26,7 +28,13 @@ export default function TecnicosManager() {
   const [selectedTecnico, setSelectedTecnico] = useState<Tecnico | null>(null);
   
   // Form state
-  const [formData, setFormData] = useState<Partial<Tecnico>>({});
+  const [primeiroNome, setPrimeiroNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
+  const [matricula, setMatricula] = useState('');
+  const [ctBasesList, setCtBasesList] = useState<string[]>(['']);
+  const [role, setRole] = useState('PADRAO');
+  const [ativo, setAtivo] = useState(true);
+  
   const [newPassword, setNewPassword] = useState('');
   const [autoPassword, setAutoPassword] = useState(true);
   const [createPassword, setCreatePassword] = useState('');
@@ -46,7 +54,7 @@ export default function TecnicosManager() {
       });
       setTecnicos(response.data);
     } catch (err) {
-      console.error('Erro ao buscar técnicos', err);
+      console.error('Erro ao buscar usuários', err);
     } finally {
       setLoading(false);
     }
@@ -56,13 +64,39 @@ export default function TecnicosManager() {
     setError('');
     if (tecnico) {
       setSelectedTecnico(tecnico);
-      setFormData(tecnico);
+      setMatricula(tecnico.matricula || '');
+      setRole(tecnico.role || 'PADRAO');
+      setAtivo(tecnico.ativo ?? true);
+      
+      // Separar Primeiro Nome e Sobrenome
+      if (tecnico.primeiroNome) {
+        setPrimeiroNome(tecnico.primeiroNome);
+        setSobrenome(tecnico.sobrenome || '');
+      } else if (tecnico.nomeCompleto) {
+        const parts = tecnico.nomeCompleto.trim().split(' ');
+        setPrimeiroNome(parts[0] || '');
+        setSobrenome(parts.slice(1).join(' ') || '');
+      } else {
+        setPrimeiroNome('');
+        setSobrenome('');
+      }
+
+      // CT Bases Lista
+      if (tecnico.ctBases && tecnico.ctBases.length > 0) {
+        setCtBasesList([...tecnico.ctBases]);
+      } else {
+        setCtBasesList(['']);
+      }
     } else {
       setSelectedTecnico(null);
-      setFormData({
-        ativo: true,
-        role: 'PADRAO'
-      });
+      setPrimeiroNome('');
+      setSobrenome('');
+      setMatricula('');
+      setCtBasesList(['']);
+      setRole('PADRAO');
+      setAtivo(true);
+      setAutoPassword(true);
+      setCreatePassword('');
     }
     setIsEditModalOpen(true);
   };
@@ -75,7 +109,7 @@ export default function TecnicosManager() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir este técnico? Esta ação é irreversível e pode quebrar os históricos se ele possuir métricas atreladas.')) return;
+    if (!window.confirm('Tem certeza que deseja excluir este usuário? Esta ação é irreversível e pode afetar históricos.')) return;
     
     try {
       const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
@@ -85,7 +119,26 @@ export default function TecnicosManager() {
       setTecnicos(tecnicos.filter(t => t.idTecnico !== id));
     } catch (err) {
       console.error('Erro ao deletar', err);
-      alert('Erro ao excluir técnico.');
+      alert('Erro ao excluir usuário.');
+    }
+  };
+
+  // Funções de manipulação dinâmica das CT Bases
+  const handleCtBaseChange = (index: number, value: string) => {
+    const newList = [...ctBasesList];
+    newList[index] = value;
+    setCtBasesList(newList);
+  };
+
+  const handleAddCtBase = () => {
+    setCtBasesList([...ctBasesList, '']);
+  };
+
+  const handleRemoveCtBase = (index: number) => {
+    if (ctBasesList.length === 1) {
+      setCtBasesList(['']);
+    } else {
+      setCtBasesList(ctBasesList.filter((_, i) => i !== index));
     }
   };
 
@@ -94,18 +147,31 @@ export default function TecnicosManager() {
     setIsSubmitting(true);
     setError('');
 
+    const nomeCompletoFormatted = `${primeiroNome.trim()} ${sobrenome.trim()}`.trim();
+    const cleanCtBases = ctBasesList.map(b => b.trim()).filter(b => b.length > 0);
+
+    const payload = {
+      primeiroNome: primeiroNome.trim(),
+      sobrenome: sobrenome.trim(),
+      nomeCompleto: nomeCompletoFormatted,
+      matricula: matricula.trim(),
+      ctBases: cleanCtBases,
+      role,
+      ativo
+    };
+
     try {
       const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
       
       if (selectedTecnico) {
         // Update
-        await axios.put(`${baseURL}/tecnicos/${selectedTecnico.idTecnico}`, formData, {
+        await axios.put(`${baseURL}/tecnicos/${selectedTecnico.idTecnico}`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
       } else {
         // Create 
         await axios.post(`${baseURL}/tecnicos`, {
-          ...formData,
+          ...payload,
           senha: autoPassword ? 'brilha123' : createPassword 
         }, {
           headers: { Authorization: `Bearer ${token}` }
@@ -145,7 +211,9 @@ export default function TecnicosManager() {
 
   const filteredTecnicos = tecnicos.filter(t => 
     t.nomeCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.matricula?.toLowerCase().includes(searchTerm.toLowerCase())
+    t.matricula?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.primeiroNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.sobrenome?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -155,7 +223,7 @@ export default function TecnicosManager() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-text-muted" size={18} />
           <input 
             type="text" 
-            placeholder="Buscar por nome ou matrícula..."
+            placeholder="Buscar por nome, sobrenome ou matrícula..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl text-sm focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal text-light-text-main dark:text-slate-200 placeholder-light-text-muted dark:placeholder-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -164,10 +232,10 @@ export default function TecnicosManager() {
         
         <button 
           onClick={() => openEditModal()}
-          className="w-full sm:w-auto bg-accent-teal text-[#0f172a] hover:bg-emerald-400 px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+          className="w-full sm:w-auto bg-accent-teal text-[#0f172a] hover:bg-emerald-400 px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <Plus size={18} />
-          Adicionar Técnico
+          Criar usuário
         </button>
       </div>
 
@@ -178,7 +246,7 @@ export default function TecnicosManager() {
               <tr>
                 <th className="px-6 py-4">Matrícula</th>
                 <th className="px-6 py-4">Nome Completo</th>
-                <th className="px-6 py-4">Base</th>
+                <th className="px-6 py-4">Bases ATP</th>
                 <th className="px-6 py-4">Perfil</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Ações</th>
@@ -189,21 +257,31 @@ export default function TecnicosManager() {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-light-text-muted dark:text-text-muted">
                     <Loader2 className="animate-spin mx-auto mb-2" size={24} />
-                    Carregando técnicos...
+                    Carregando usuários...
                   </td>
                 </tr>
               ) : filteredTecnicos.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-light-text-muted dark:text-text-muted">
-                    Nenhum técnico encontrado.
+                    Nenhum usuário encontrado.
                   </td>
                 </tr>
               ) : (
                 filteredTecnicos.map(t => (
                   <tr key={t.idTecnico} className="hover:bg-slate-50 dark:hover:bg-surface/30 transition-colors">
-                    <td className="px-6 py-3 font-medium text-light-text-main dark:text-slate-300">{t.matricula}</td>
+                    <td className="px-6 py-3 font-medium text-light-text-main dark:text-slate-300">{t.matricula || '-'}</td>
                     <td className="px-6 py-3 text-light-text-main dark:text-slate-300">{toTitleCase(t.nomeCompleto)}</td>
-                    <td className="px-6 py-3 text-light-text-secondary dark:text-slate-400">{t.ctBases ? t.ctBases.join(', ') : '-'}</td>
+                    <td className="px-6 py-3 text-light-text-secondary dark:text-slate-400">
+                      {t.ctBases && t.ctBases.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {t.ctBases.map((b, idx) => (
+                            <span key={idx} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs px-2 py-0.5 rounded-md font-mono">
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      ) : '-'}
+                    </td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider ${
                         t.role === 'MODERADOR' ? 'bg-amber-500/20 text-amber-400' : 
@@ -221,13 +299,13 @@ export default function TecnicosManager() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEditModal(t)} className="p-2 hover:bg-accent-teal/10 hover:text-accent-teal text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Editar">
+                        <button onClick={() => openEditModal(t)} className="p-2 hover:bg-accent-teal/10 hover:text-accent-teal text-light-text-muted dark:text-slate-400 rounded-lg transition-colors cursor-pointer" title="Editar">
                           <Pencil size={16} />
                         </button>
-                        <button onClick={() => openPasswordModal(t)} className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Redefinir Senha">
+                        <button onClick={() => openPasswordModal(t)} className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors cursor-pointer" title="Redefinir Senha">
                           <KeyRound size={16} />
                         </button>
-                        <button onClick={() => handleDelete(t.idTecnico)} className="p-2 hover:bg-rose-500/10 hover:text-rose-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors" title="Excluir">
+                        <button onClick={() => handleDelete(t.idTecnico)} className="p-2 hover:bg-rose-500/10 hover:text-rose-400 text-light-text-muted dark:text-slate-400 rounded-lg transition-colors cursor-pointer" title="Excluir">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -240,44 +318,99 @@ export default function TecnicosManager() {
         </div>
       </div>
 
-      {/* MODAL EDIÇÃO/CRIAR */}
+      {/* MODAL CRIAR / EDITAR USUÁRIO */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-light-surface dark:bg-[#1e293b] border border-light-borderStrong dark:border-border rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-6 border-b border-light-borderStrong dark:border-border">
               <h3 className="text-xl font-bold text-light-text-main dark:text-slate-200">
-                {selectedTecnico ? 'Editar Técnico' : 'Adicionar Técnico'}
+                {selectedTecnico ? 'Editar usuário' : 'Criar usuário'}
               </h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-light-text-muted dark:text-slate-400 hover:text-light-text-main dark:hover:text-white transition-colors">
+              <button onClick={() => setIsEditModalOpen(false)} className="text-light-text-muted dark:text-slate-400 hover:text-light-text-main dark:hover:text-white transition-colors cursor-pointer">
                 <X size={24} />
               </button>
             </div>
             
             <form onSubmit={handleSave}>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* PRIMEIRO NOME */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Nome Completo</label>
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Primeiro Nome</label>
                     <input 
                       required
                       type="text" 
+                      placeholder="Ex: João"
                       className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.nomeCompleto || ''}
-                      onChange={e => setFormData({...formData, nomeCompleto: e.target.value})}
+                      value={primeiroNome}
+                      onChange={e => setPrimeiroNome(e.target.value)}
                     />
                   </div>
+
+                  {/* SOBRENOME */}
                   <div className="space-y-1">
+                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Sobrenome</label>
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="Ex: Silva Ramos"
+                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
+                      value={sobrenome}
+                      onChange={e => setSobrenome(e.target.value)}
+                    />
+                  </div>
+
+                  {/* MATRÍCULA */}
+                  <div className="space-y-1 col-span-1 sm:col-span-2">
                     <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Matrícula</label>
                     <input 
-                      required
                       type="text" 
+                      placeholder="Ex: 74233"
                       className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.matricula || ''}
-                      onChange={e => setFormData({...formData, matricula: e.target.value})}
+                      value={matricula}
+                      onChange={e => setMatricula(e.target.value)}
                     />
                   </div>
+
+                  {/* CT BASES DINÂMICAS COM BOTÃO + */}
+                  <div className="space-y-2 col-span-1 sm:col-span-2 bg-slate-100 dark:bg-surface/40 p-4 rounded-xl border border-light-borderStrong dark:border-border/50">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Bases ATP (CT Base)</label>
+                      <button
+                        type="button"
+                        onClick={handleAddCtBase}
+                        className="text-xs font-bold text-accent-teal hover:text-emerald-400 flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        Adicionar mais uma base
+                      </button>
+                    </div>
+
+                    {ctBasesList.map((ctCode, index) => (
+                      <div key={index} className="flex items-center gap-2 animate-in fade-in duration-150">
+                        <input 
+                          type="text"
+                          placeholder="Ex: 8788711"
+                          className="flex-grow bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-sm text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
+                          value={ctCode}
+                          onChange={e => handleCtBaseChange(index, e.target.value)}
+                        />
+                        {ctBasesList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCtBase(index)}
+                            className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                            title="Remover Base"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
                   {!selectedTecnico && (
-                    <div className="col-span-2 space-y-3 mt-2 p-4 bg-slate-100 dark:bg-surface/50 border border-light-borderStrong dark:border-border/50 rounded-xl">
+                    <div className="col-span-1 sm:col-span-2 space-y-3 p-4 bg-slate-100 dark:bg-surface/50 border border-light-borderStrong dark:border-border/50 rounded-xl">
                       <label className="flex items-center gap-3 cursor-pointer">
                         <input 
                           type="checkbox" 
@@ -305,34 +438,27 @@ export default function TecnicosManager() {
                       )}
                     </div>
                   )}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">CT Base</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.ctBases ? formData.ctBases.join(', ') : ''}
-                      onChange={e => setFormData({...formData, ctBases: e.target.value.split(',').map(s => s.trim())})}
-                    />
-                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-light-text-muted dark:text-text-muted uppercase">Perfil (Role)</label>
                     <select 
                       className="w-full bg-slate-50 dark:bg-surface border border-light-borderStrong dark:border-border rounded-xl p-2.5 text-light-text-main dark:text-slate-200 focus:outline-none focus:border-accent-teal"
-                      value={formData.role || 'PADRAO'}
-                      onChange={e => setFormData({...formData, role: e.target.value})}
+                      value={role}
+                      onChange={e => setRole(e.target.value)}
                     >
                       <option value="PADRAO">Técnico Padrão</option>
                       <option value="ADMINISTRADOR">Administrador / Supervisor</option>
                       <option value="MODERADOR">Moderador (Acesso Total)</option>
                     </select>
                   </div>
+
                   <div className="space-y-1 flex items-center mt-6">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="checkbox" 
                         className="w-4 h-4 rounded bg-slate-50 dark:bg-surface border-light-borderStrong dark:border-border text-accent-teal focus:ring-accent-teal"
-                        checked={formData.ativo || false}
-                        onChange={e => setFormData({...formData, ativo: e.target.checked})}
+                        checked={ativo}
+                        onChange={e => setAtivo(e.target.checked)}
                       />
                       <span className="text-sm font-semibold text-light-text-main dark:text-slate-300">Usuário Ativo no Sistema</span>
                     </label>
@@ -345,14 +471,14 @@ export default function TecnicosManager() {
                 <button 
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-2 rounded-xl text-light-text-secondary dark:text-slate-300 font-semibold hover:bg-slate-200 dark:hover:bg-surface transition-colors"
+                  className="px-5 py-2 rounded-xl text-light-text-secondary dark:text-slate-300 font-semibold hover:bg-slate-200 dark:hover:bg-surface transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 rounded-xl bg-accent-teal hover:bg-emerald-400 text-[#0f172a] font-bold transition-colors disabled:opacity-50"
+                  className="px-6 py-2 rounded-xl bg-accent-teal hover:bg-emerald-400 text-[#0f172a] font-bold transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
@@ -371,7 +497,7 @@ export default function TecnicosManager() {
                 <KeyRound size={20} className="text-amber-400" />
                 Redefinir Senha
               </h3>
-              <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -380,7 +506,7 @@ export default function TecnicosManager() {
               <div className="p-5 space-y-4">
                 <p className="text-sm text-text-muted">
                   Defina uma nova senha para <strong>{selectedTecnico?.nomeCompleto}</strong>. 
-                  O técnico precisará trocar essa senha no próximo login.
+                  O usuário precisará trocar essa senha no próximo login.
                 </p>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-text-muted uppercase">Nova Senha Temporária</label>
@@ -400,14 +526,14 @@ export default function TecnicosManager() {
                 <button 
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-300 font-semibold hover:bg-surface transition-colors"
+                  className="px-4 py-2 rounded-xl text-slate-300 font-semibold hover:bg-surface transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit"
                   disabled={isSubmitting || !newPassword}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'Redefinindo...' : 'Confirmar Senha'}
                 </button>

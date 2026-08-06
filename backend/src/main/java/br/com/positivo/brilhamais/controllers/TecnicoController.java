@@ -41,13 +41,18 @@ public class TecnicoController {
         if (tecnico.getSenha() != null && !tecnico.getSenha().isEmpty()) {
             tecnico.setSenha(passwordEncoder.encode(tecnico.getSenha()));
         }
+        syncNomes(tecnico);
         return ResponseEntity.ok(tecnicoRepository.save(tecnico));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Tecnico> updateTecnico(@PathVariable Integer id, @RequestBody Tecnico update) {
         return tecnicoRepository.findById(id).map(tecnico -> {
+            if (update.getPrimeiroNome() != null) tecnico.setPrimeiroNome(update.getPrimeiroNome());
+            if (update.getSobrenome() != null) tecnico.setSobrenome(update.getSobrenome());
             if (update.getNomeCompleto() != null) tecnico.setNomeCompleto(update.getNomeCompleto());
+            syncNomes(tecnico);
+
             if (update.getMatricula() != null) tecnico.setMatricula(update.getMatricula());
             if (update.getCpf() != null) tecnico.setCpf(update.getCpf());
             if (update.getCtBases() != null) tecnico.setCtBases(update.getCtBases());
@@ -57,6 +62,23 @@ public class TecnicoController {
             // We intentionally do not update the password here, only via PATCH
             return ResponseEntity.ok(tecnicoRepository.save(tecnico));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private void syncNomes(Tecnico tecnico) {
+        if (tecnico.getPrimeiroNome() != null && tecnico.getSobrenome() != null) {
+            String full = (tecnico.getPrimeiroNome().trim() + " " + tecnico.getSobrenome().trim()).trim();
+            tecnico.setNomeCompleto(full);
+        } else if (tecnico.getNomeCompleto() != null) {
+            String trimmed = tecnico.getNomeCompleto().trim();
+            int firstSpace = trimmed.indexOf(' ');
+            if (firstSpace > 0) {
+                tecnico.setPrimeiroNome(trimmed.substring(0, firstSpace));
+                tecnico.setSobrenome(trimmed.substring(firstSpace + 1).trim());
+            } else {
+                tecnico.setPrimeiroNome(trimmed);
+                tecnico.setSobrenome("");
+            }
+        }
     }
 
     @DeleteMapping("/{id}")

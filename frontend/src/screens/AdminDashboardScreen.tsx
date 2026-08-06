@@ -289,8 +289,8 @@ export default function AdminDashboardScreen() {
         </div>
       </div>
 
-      {/* JSDoc: Visão Global (Team Dashboard) quando nenhum técnico específico está selecionado */}
-      {selectedTecnicoIdentifier === 'all' && teamSummary && (
+      {/* JSDoc: Visão Global (Team Dashboard) - Sempre visível se houver equipe */}
+      {teamSummary && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-light-surface dark:bg-surface p-5 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border">
@@ -315,13 +315,15 @@ export default function AdminDashboardScreen() {
             </div>
           </div>
           
-          <div className="bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border text-center">
-            <Filter className="mx-auto h-12 w-12 text-light-text-muted/50 dark:text-text-muted/30 mb-3" />
-            <h3 className="text-lg font-medium text-light-text-main dark:text-text-main">Visão Consolidada</h3>
-            <p className="text-light-text-muted dark:text-text-muted text-sm mt-1 max-w-md mx-auto">
-              Selecione um técnico no menu acima para realizar o drill-down e visualizar o detalhamento do Brilha Mais idêntico à visão do técnico.
-            </p>
-          </div>
+          {selectedTecnicoIdentifier === 'all' && (
+            <div className="bg-light-surface dark:bg-surface p-6 rounded-positivo-lg shadow-sm border border-light-borderStrong dark:border-border text-center">
+              <Filter className="mx-auto h-12 w-12 text-light-text-muted/50 dark:text-text-muted/30 mb-3" />
+              <h3 className="text-lg font-medium text-light-text-main dark:text-text-main">Visão Consolidada</h3>
+              <p className="text-light-text-muted dark:text-text-muted text-sm mt-1 max-w-md mx-auto">
+                Selecione um técnico no menu acima para realizar o drill-down e visualizar o detalhamento do Brilha Mais idêntico à visão do técnico.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -31,6 +31,12 @@ public class Supervisor implements UserDetails {
     @Column(name = "nome_completo", nullable = false)
     private String nomeCompleto;
 
+    @Column(name = "primeiro_nome")
+    private String primeiroNome;
+
+    @Column(name = "sobrenome")
+    private String sobrenome;
+
     @Column(name = "senha")
     private String senha;
 

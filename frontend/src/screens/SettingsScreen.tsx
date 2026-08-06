@@ -195,7 +195,7 @@ export default function SettingsScreen() {
             className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${activeTab === 'TECNICOS' ? 'bg-accent-teal text-[#0f172a] shadow-lg shadow-accent-teal/20' : 'bg-slate-200 dark:bg-surface text-light-text-muted dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-surface/80 hover:text-light-text-main dark:hover:text-slate-200'}`}
           >
             <Users size={20} />
-            Gestão de Técnicos
+            Gestão de usuários
           </button>
           <button
             onClick={() => setActiveTab('CAMPANHA')}
@@ -260,7 +260,7 @@ export default function SettingsScreen() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
              <h2 className="text-xl font-bold text-text-main mb-6 flex items-center gap-2">
               <Users className="text-accent-teal" size={24} />
-              Gestão de Técnicos
+              Gestão de usuários
             </h2>
             <TecnicosManager />
           </div>
